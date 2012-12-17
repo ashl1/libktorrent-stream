@@ -155,32 +155,32 @@ namespace bt
 		std::list<Uint32>::iterator itr = range.begin();
 		while (itr != range.end())
 		{
-			Uint32 i = *itr;
-			const Chunk* c = cman->getChunk(i);
+			Uint32 chunk_index = *itr;
+			const Chunk* chunk = cman->getChunk(chunk_index);
 			
 			// if we have the chunk remove it from the list
-			if (bs.get(i))
+			if (bs.get(chunk_index))
 			{
 				std::list<Uint32>::iterator tmp = itr;
 				itr++;
 				range.erase(tmp);
 			}
-			else if (pd->hasChunk(i) && !c->isExcluded() && !c->isExcludedForDownloading())
+			else if (pd->hasChunk(chunk_index) && !chunk->isExcluded() && !chunk->isExcludedForDownloading())
 			{
-				if (i < cursor + critical_window_size)
+				if (chunk_index < cursor + critical_window_size)
 				{
 					// Attempt to find the critical chunk with the least downloaders
-					Uint32 nd = downer->numDownloadersForChunk(i);
+					Uint32 nd = downer->numDownloadersForChunk(chunk_index);
 					if (critical_chunk == INVALID_CHUNK || nd < critical_chunk_downloaders)
 					{
-						critical_chunk = i;
+						critical_chunk = chunk_index;
 						critical_chunk_downloaders = nd;
 					}
 				}
-				else if (!downer->downloading(i))
+				else if (!downer->isChunkDownloading(chunk_index))
 				{
 					// Stop at the first non critical chunk
-					non_critical_chunk = i;
+					non_critical_chunk = chunk_index;
 					break;
 				}
 				

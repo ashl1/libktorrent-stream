@@ -37,7 +37,7 @@ namespace bt
 	void SuperSeeder::have(PeerInterface* peer, Uint32 chunk)
 	{
 		chunk_counter->inc(chunk);
-		if (peer->getBitSet().allOn()) // it is possible the peer has become a seeder
+		if (peer->getPiecesAvailability().allOn()) // it is possible the peer has become a seeder
 			num_seeders++;
 		
 		QList<PeerInterface*> peers;
@@ -95,13 +95,13 @@ namespace bt
 	
 	void SuperSeeder::peerAdded(PeerInterface* peer)
 	{
-		if (peer->getBitSet().allOn())
+		if (peer->getPiecesAvailability().allOn())
 		{
 			num_seeders++;
 		}
 		else
 		{
-			chunk_counter->incBitSet(peer->getBitSet());
+			chunk_counter->incBitSet(peer->getPiecesAvailability());
 			sendChunk(peer);
 		}
 	}
@@ -117,10 +117,10 @@ namespace bt
 		}
 		
 		// decrease num_seeders if the peer is a seeder
-		if (peer->getBitSet().allOn() && num_seeders > 0)
+		if (peer->getPiecesAvailability().allOn() && num_seeders > 0)
 			num_seeders--;
 		
-		chunk_counter->decBitSet(peer->getBitSet());
+		chunk_counter->decBitSet(peer->getPiecesAvailability());
 	}
 
 	void SuperSeeder::sendChunk(PeerInterface* peer)
@@ -128,7 +128,7 @@ namespace bt
 		if (active_peers.contains(peer))
 			return;
 		
-		const BitSet & bs = peer->getBitSet();
+		const BitSet & bs = peer->getPiecesAvailability();
 		if (bs.allOn())
 			return;
 		

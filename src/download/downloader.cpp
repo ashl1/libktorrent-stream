@@ -64,7 +64,7 @@ namespace bt
 		curr_chunks_downloaded = 0;
 		unnecessary_data = 0;
 	
-		current_chunks.setAutoDelete(true);
+		downloading_chunks.setAutoDelete(true);
 		
 		active_webseed_downloads = 0;
 		const KUrl::List & urls = tor.getWebSeeds();
@@ -123,7 +123,7 @@ namespace bt
 		if (cman.completed())
 			return;
 		
-		ChunkDownload* cd = current_chunks.find(p.getIndex());
+		ChunkDownload* cd = downloading_chunks.find(p.getIndex());
 		if (!cd)
 		{
 			unnecessary_data += p.getLength();
@@ -148,11 +148,11 @@ namespace bt
 					bytes_downloaded = 0;
 				else
 					bytes_downloaded -= cd->getChunk()->getSize();
-				current_chunks.erase(p.getIndex());
+				downloading_chunks.erase(p.getIndex());
 			}
 			else
 			{
-				current_chunks.erase(p.getIndex());
+				downloading_chunks.erase(p.getIndex());
 				foreach (WebSeed* ws,webseeds)
 				{
 					if (ws->inCurrentRange(p.getIndex()))
@@ -176,7 +176,7 @@ namespace bt
 	
 	bool Downloader::endgameMode() const
 	{
-		return current_chunks.count() >= cman.chunksLeft();
+		return downloading_chunks.count() >= cman.chunksLeft();
 	}
 	
 	void Downloader::update()
@@ -215,7 +215,7 @@ namespace bt
 	
 	void Downloader::normalUpdate()
 	{
-		for (CurChunkItr j = current_chunks.begin();j != current_chunks.end();++j)
+		for (CurChunkItr j = downloading_chunks.begin();j != downloading_chunks.end();++j)
 		{
 			ChunkDownload* cd = j->second;
 			if (cd->isIdle())
@@ -270,18 +270,18 @@ namespace bt
 	}
 
 	
-	ChunkDownload* Downloader::selectCD(PieceDownloader* pd,Uint32 n)
+	ChunkDownload* Downloader::selectUnfinishedChunkDownload(PieceDownloader* pieceDownloader, Uint32 requiredPieceDownloaders)
 	{
 		ChunkDownload* sel = 0;
 		Uint32 sel_left = 0xFFFFFFFF;
 		
-		for (CurChunkItr j = current_chunks.begin();j != current_chunks.end();++j)
+		for (CurChunkItr j = downloading_chunks.begin();j != downloading_chunks.end();++j)
 		{
 			ChunkDownload* cd = j->second;
-			if (pd->isChoked() || !pd->hasChunk(cd->getChunk()->getIndex()))
+			if (pieceDownloader->isChoked() || !pieceDownloader->hasChunk(cd->getChunk()->getIndex()))
 				continue;
 			
-			if (cd->getNumDownloaders() == n) 
+			if (cd->getNumDownloaders() == requiredPieceDownloaders) 
 			{
 				// lets favor the ones which are nearly finished
 				if (!sel || cd->getTotalPieces() - cd->getPiecesDownloaded() < sel_left)
@@ -295,15 +295,15 @@ namespace bt
 	}
 	
 
-	bool Downloader::findDownloadForPD(PieceDownloader* pd)
+	bool Downloader::setUnfinishedChunkDownload(PieceDownloader* pieceDownloader)
 	{
 		ChunkDownload* sel = 0;
 		
 		// See if there are ChunkDownload's which need a PieceDownloader
-		sel = selectCD(pd,0);
+		sel = selectUnfinishedChunkDownload(pieceDownloader,0);
 		if (sel)
 		{
-			return sel->assign(pd);
+			return sel->assign(pieceDownloader);
 		}
 		
 		return false;
@@ -312,7 +312,7 @@ namespace bt
 	ChunkDownload* Downloader::selectWorst(PieceDownloader* pd)
 	{
 		ChunkDownload* cdmin = NULL;
-		for (CurChunkItr j = current_chunks.begin();j != current_chunks.end();++j) 
+		for (CurChunkItr j = downloading_chunks.begin();j != downloading_chunks.end();++j) 
 		{ 
 			ChunkDownload* cd = j->second; 
 			if (!pd->hasChunk(cd->getChunk()->getIndex()) || cd->containsPeer(pd))
@@ -331,22 +331,22 @@ namespace bt
 
 	bool Downloader::downloadFrom(PieceDownloader* pd)
 	{
-		// first see if we can use an existing dowload
-		if (findDownloadForPD(pd))
+		// first see if we can use an existing download
+		if (setUnfinishedChunkDownload(pd))
 			return true;
 		
 		Uint32 chunk = 0;
 		if (chunk_selector->select(pd,chunk))
 		{
 			Chunk* c = cman.getChunk(chunk);
-			if (current_chunks.contains(chunk))
+			if (downloading_chunks.contains(chunk))
 			{
-				return current_chunks.find(chunk)->assign(pd);
+				return downloading_chunks.find(chunk)->assign(pd);
 			}
 			else
 			{
 				ChunkDownload* cd = new ChunkDownload(c);
-				current_chunks.insert(chunk,cd);
+				downloading_chunks.insert(chunk,cd);
 				cd->assign(pd);
 				if (tmon)
 					tmon->downloadStarted(cd);
@@ -386,9 +386,9 @@ namespace bt
 	}
 	
 
-	bool Downloader::downloading(Uint32 chunk) const
+	bool Downloader::isChunkDownloading(Uint32 chunk) const
 	{
-		return current_chunks.find(chunk) != 0;
+		return downloading_chunks.find(chunk) != 0;
 	}
 	
 	bool Downloader::canDownloadFromWebSeed(Uint32 chunk) const
@@ -402,12 +402,12 @@ namespace bt
 				return false;
 		}
 		
-		return !downloading(chunk);
+		return !isChunkDownloading(chunk);
 	}
 	
 	Uint32 Downloader::numDownloadersForChunk(Uint32 chunk) const
 	{
-		const ChunkDownload* cd = current_chunks.find(chunk);
+		const ChunkDownload* cd = downloading_chunks.find(chunk);
 		if (!cd)
 			return 0;
 		
@@ -421,7 +421,7 @@ namespace bt
 
 	void Downloader::removePieceDownloader(PieceDownloader* peer)
 	{
-		for (CurChunkItr i = current_chunks.begin();i != current_chunks.end();++i)
+		for (CurChunkItr i = downloading_chunks.begin();i != downloading_chunks.end();++i)
 		{
 			ChunkDownload* cd = i->second;
 			cd->killed(peer);
@@ -490,7 +490,7 @@ namespace bt
 	
 	void Downloader::clearDownloads()
 	{
-		current_chunks.clear();
+		downloading_chunks.clear();
 		piece_downloaders.clear();
 		
 		foreach (WebSeed* ws,webseeds)
@@ -501,14 +501,14 @@ namespace bt
 	{
 		if (tmon)
 		{
-			for (CurChunkItr i = current_chunks.begin();i != current_chunks.end();++i)
+			for (CurChunkItr i = downloading_chunks.begin();i != downloading_chunks.end();++i)
 			{
 				ChunkDownload* cd = i->second;
 				tmon->downloadRemoved(cd);
 			}
 		}
 		
-		current_chunks.clear();
+		downloading_chunks.clear();
 		foreach (WebSeed* ws,webseeds)
 			ws->reset();
 	}
@@ -536,7 +536,7 @@ namespace bt
 		if (!tmon)
 			return;
 
-		for (CurChunkItr i = current_chunks.begin();i != current_chunks.end();++i)
+		for (CurChunkItr i = downloading_chunks.begin();i != downloading_chunks.end();++i)
 		{
 			ChunkDownload* cd = i->second;
 			tmon->downloadStarted(cd);
@@ -561,10 +561,10 @@ namespace bt
 
 		// See bug 219019, don't know why, but it is possible that we get 0 pointers in the map
 		// so get rid of them before we save
-		for (CurChunkItr i = current_chunks.begin();i != current_chunks.end();)
+		for (CurChunkItr i = downloading_chunks.begin();i != downloading_chunks.end();)
 		{
 			if (!i->second)
-				i = current_chunks.erase(i);
+				i = downloading_chunks.erase(i);
 			else
 				i++;
 		}
@@ -574,11 +574,11 @@ namespace bt
 		hdr.magic = CURRENT_CHUNK_MAGIC;
 		hdr.major = bt::MAJOR;
 		hdr.minor = bt::MINOR;
-		hdr.num_chunks = current_chunks.count();
+		hdr.num_chunks = downloading_chunks.count();
 		fptr.write(&hdr,sizeof(CurrentChunksHeader));
 		
-		Out(SYS_GEN|LOG_DEBUG) << "Saving " << current_chunks.count() << " chunk downloads" << endl;
-		for (CurChunkItr i = current_chunks.begin();i != current_chunks.end();i++)
+		Out(SYS_GEN|LOG_DEBUG) << "Saving " << downloading_chunks.count() << " chunk downloads" << endl;
+		for (CurChunkItr i = downloading_chunks.begin();i != downloading_chunks.end();i++)
 		{
 			ChunkDownload* cd = i->second;
 			cd->save(fptr); 
@@ -621,7 +621,7 @@ namespace bt
 			}
 			
 			Chunk* c = cman.getChunk(hdr.index);
-			if (!c || current_chunks.contains(hdr.index))
+			if (!c || downloading_chunks.contains(hdr.index))
 			{
 				Out(SYS_GEN|LOG_DEBUG) << "Illegal chunk " << hdr.index << endl;
 				return;
@@ -644,7 +644,7 @@ namespace bt
 			}
 			else
 			{
-				current_chunks.insert(hdr.index,cd);
+				downloading_chunks.insert(hdr.index,cd);
 				bytes_downloaded += cd->bytesDownloaded();
 		
 				if (tmon)
@@ -703,7 +703,7 @@ namespace bt
 	{
 		for (Uint32 i = from;i <= to;i++)
 		{
-			ChunkDownload* cd = current_chunks.find(i);
+			ChunkDownload* cd = downloading_chunks.find(i);
 			if (!cd)
 				continue;
 			
@@ -711,7 +711,7 @@ namespace bt
 			cd->releaseAllPDs();
 			if (tmon)
 				tmon->downloadRemoved(cd);
-			current_chunks.erase(i);
+			downloading_chunks.erase(i);
 			cman.resetChunk(i); // reset chunk it is not fully downloaded yet
 		}
 		
@@ -735,7 +735,7 @@ namespace bt
 	{
 		for (Uint32 i = from;i < ok_chunks.getNumBits() && i <= to;i++)
 		{
-			ChunkDownload* cd = current_chunks.find(i);
+			ChunkDownload* cd = downloading_chunks.find(i);
 			if (ok_chunks.get(i) && cd)
 			{
 				// we have a chunk and we are downloading it so kill it
@@ -743,7 +743,7 @@ namespace bt
 				if (tmon)
 					tmon->downloadRemoved(cd);
 				
-				current_chunks.erase(i);
+				downloading_chunks.erase(i);
 			}
 		}
 		chunk_selector->dataChecked(ok_chunks, from, to);
@@ -774,14 +774,14 @@ namespace bt
 						ws->chunkDownloaded(c->getIndex());
 				}
 				
-				ChunkDownload* cd = current_chunks.find(c->getIndex());
+				ChunkDownload* cd = downloading_chunks.find(c->getIndex());
 				if (cd)
 				{
 					// A ChunkDownload is ongoing for this chunk so kill it, we have the chunk
 					cd->cancelAll();
 					if (tmon)
 						tmon->downloadRemoved(cd);
-					current_chunks.erase(c->getIndex());
+					downloading_chunks.erase(c->getIndex());
 				}
 				
 				c->savePiece(piece);
@@ -801,7 +801,7 @@ namespace bt
 		{
 			Out(SYS_GEN|LOG_IMPORTANT) << "Hash verification error on chunk "  << c->getIndex() << endl;
 			// reset chunk but only when no other peer is downloading it
-			if (!current_chunks.find(c->getIndex()))
+			if (!downloading_chunks.find(c->getIndex()))
 				cman.resetChunk(c->getIndex());
 			
 			chunk_selector->reinsert(c->getIndex());
@@ -955,12 +955,12 @@ namespace bt
 	
 	ChunkDownload* Downloader::download(Uint32 chunk)
 	{
-		return current_chunks.find(chunk);
+		return downloading_chunks.find(chunk);
 	}
 	
 	const bt::ChunkDownload* Downloader::download(Uint32 chunk) const
 	{
-		return current_chunks.find(chunk);
+		return downloading_chunks.find(chunk);
 	}
 	
 	void Downloader::setUseWebSeeds(bool on) 

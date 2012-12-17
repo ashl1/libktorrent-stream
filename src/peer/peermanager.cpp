@@ -631,7 +631,7 @@ namespace bt
 
 			if(peer->isKilled())
 			{
-				cnt.decBitSet(peer->getBitSet());
+				cnt.decBitSet(peer->getPiecesAvailability());
 				updateAvailableChunks();
 				i = peer_map.erase(i);
 				p->peerKilled(peer.data());

@@ -160,7 +160,7 @@ namespace bt
 			else if (pd->hasChunk(i))
 			{
 				// pd has to have the selected chunk and it needs to be not excluded
-				if (!downer->downloading(i))
+				if (!downer->isChunkDownloading(i))
 				{ 
 					// we have a chunk
 					sel = i;

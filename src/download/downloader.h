@@ -116,7 +116,7 @@ namespace bt
 		Uint32 downloadRate() const;
 
 		/// Get the number of chunks we are dowloading
-		Uint32 numActiveDownloads() const {return current_chunks.count() + active_webseed_downloads;}
+		Uint32 numActiveDownloads() const {return downloading_chunks.count() + active_webseed_downloads;}
 
 		/// See if the download is finished.
 		bool isFinished() const;
@@ -131,8 +131,8 @@ namespace bt
 		 */
 		void pause();
 		
-		CurChunkCItr beginDownloads() const {return current_chunks.begin();}
-		CurChunkCItr endDownloads() const {return current_chunks.end();}
+		CurChunkCItr beginDownloads() const {return downloading_chunks.begin();}
+		CurChunkCItr endDownloads() const {return downloading_chunks.end();}
 		
 		
 		/**
@@ -154,7 +154,7 @@ namespace bt
 		 * @param chunk ID of Chunk
 		 * @return true if we are, false if not
 		 */
-		bool downloading(Uint32 chunk) const;
+		bool isChunkDownloading(Uint32 chunk) const;
 		
 		/**
 		 * Can we download a chunk from a webseed.
@@ -284,8 +284,22 @@ namespace bt
 		bool downloadFrom(PieceDownloader* pd);
 		void downloadFrom(WebSeed* ws);
 		void normalUpdate();
-		bool findDownloadForPD(PieceDownloader* pd);
-		ChunkDownload* selectCD(PieceDownloader* pd,Uint32 num);
+		/**
+		 * Search for (downloaded in the past, unfinished and now isn't downloading) ChunkDownload and
+		 * assign to the specified PieceDownloader
+		 * @param pieceDownloader The PieceDownloader to assign found ChunkDownload
+		 * @return true if unfinished but has already been downloading ChunkDownload was found and
+		 *  assigned to the specified PieceDownloader, false otherwise
+		 */
+		bool setUnfinishedChunkDownload(PieceDownloader* pieceDownloader);
+		
+		/**
+		 * Select the unfinished (downloading now, or downloaded part and stopped) ChunkDownload
+		 *  with specified number of assigned PieceDownloader's for a specified PieceDownloader.
+		 * @param pieceDownloader The PieceDownloader object to set the ChunkDownload to
+		 * @param requiredPieceDownloaders The number of PieceDownloader's assigned for required ChunkDownload
+		 */
+		ChunkDownload* selectUnfinishedChunkDownload(PieceDownloader* pieceDownloader,Uint32 requiredPieceDownloaders);
 		ChunkDownload* selectWorst(PieceDownloader* pd);
 		
 	private:
@@ -295,7 +309,13 @@ namespace bt
 		Uint64 bytes_downloaded;
 		Uint64 curr_chunks_downloaded;
 		Uint64 unnecessary_data;
-		PtrMap<Uint32,ChunkDownload> current_chunks;
+		/**
+		 * @brief The list of current downloading ChunkDownload's or selected to download
+		 * The list of current downloading ChunkDownload's or selected to download.
+		 * The ChunkDownload may not downloading in specified time (for example, peer close
+		 * connections) but it should be downloaded because it's part has already been downloaded
+		 */
+		PtrMap<Uint32,ChunkDownload> downloading_chunks;
 		QList<PieceDownloader*> piece_downloaders;
 		MonitorInterface* tmon;
 		ChunkSelectorInterface* chunk_selector;

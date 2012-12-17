@@ -171,7 +171,7 @@ namespace bt
 	bool PeerDownloader::hasChunk(Uint32 idx) const
 	{
 		if (peer)
-			return peer->getBitSet().get(idx);
+			return peer->getPiecesAvailability().get(idx);
 		else
 			return false;
 	}

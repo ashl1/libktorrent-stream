@@ -123,7 +123,7 @@ namespace bt
 		virtual bt::Uint32 averageDownloadSpeed() const = 0;
 		
 		/// Get the Peer's BitSet
-		const BitSet & getBitSet() const {return pieces;}
+		const BitSet & getPiecesAvailability() const {return pieces;}
 		
 		/// Get the Peer's ID
 		const PeerID & getPeerID() const {return peer_id;}
