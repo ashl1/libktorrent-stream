@@ -79,6 +79,14 @@ namespace bt
 		virtual bool selectRange(Uint32 & from,Uint32 & to,Uint32 max_len);
 	protected:
 		Uint32 leastPeers(const std::list<Uint32> & lp,Uint32 alternative,Uint32 max_peers_per_chunk);
+		
+		/**
+		 * Select have been downloaded but haven't been finished yet and now is not downloading chunk
+		 * @param pd[in] The PieceDownloader to which the chunk will be selected
+		 * @param chunk[out] Index of chunk will be stored here
+		 * @return true upon succes, false otherwise
+		 */
+		bool selectExistingUnfinishedDownloadChunk(PieceDownloader* pieceDownloader,Uint32 & chunk);
 	};
 
 }
