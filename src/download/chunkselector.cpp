@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <algorithm>
+#include <limits>
 #include <util/log.h>
 #include <util/bitset.h>
 #include <peer/chunkcounter.h>
@@ -128,7 +129,10 @@ namespace bt
 	}
 
 	bool ChunkSelector::select(PieceDownloader* pd,Uint32 & chunk)
-	{		
+	{	
+		if (selectExistingUnfinishedDownloadChunk(pd, chunk))
+			return true;
+			
 		const BitSet & bs = cman->getBitSet();
 		
 		std::list<Uint32> preview;
@@ -257,6 +261,35 @@ namespace bt
 		return false;
 	}
 
+	bool ChunkSelector::selectExistingUnfinishedDownloadChunk(PieceDownloader* pieceDownloader, Uint32 & chunk)
+	{
+		ChunkDownload* selectedChunkDownload = 0;
+		Uint32 sel_left = std::numeric_limits<Uint32>::max();
+		
+		for (CurChunkConstItr j = downer->beginDownloads(); j != downer->endDownloads(); ++j)
+		{
+			ChunkDownload* chunkDownload = j->second;
+			if (pieceDownloader->isChoked() || !pieceDownloader->hasChunk(chunkDownload->getChunk()->getIndex()))
+				continue;
+			
+			if (chunkDownload->getNumDownloaders() == 0) 
+			{
+				// lets favor the ones which are nearly finished
+				if (!selectedChunkDownload || chunkDownload->getTotalPieces() - chunkDownload->getPiecesDownloaded() < sel_left)
+				{
+					selectedChunkDownload = chunkDownload;
+					sel_left = selectedChunkDownload->getTotalPieces() - selectedChunkDownload->getPiecesDownloaded();
+				}
+			}
+		}
+		
+		if (selectedChunkDownload) {
+			chunk = selectedChunkDownload->getChunkIndex();
+			return true;
+		}
+		return false;
+	}
+	
 	void ChunkSelector::dataChecked(const BitSet & ok_chunks, Uint32 from, Uint32 to)
 	{
 		for (Uint32 i = from;i < ok_chunks.getNumBits() && i <= to;i++)

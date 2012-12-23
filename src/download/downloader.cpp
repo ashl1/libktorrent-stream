@@ -286,46 +286,6 @@ namespace bt
 			}
 		}
 	}
-
-	
-	ChunkDownload* Downloader::selectUnfinishedChunkDownload(PieceDownloader* pieceDownloader, Uint32 requiredPieceDownloaders)
-	{
-		ChunkDownload* sel = 0;
-		Uint32 sel_left = 0xFFFFFFFF;
-		
-		for (CurChunkItr j = downloading_chunks.begin();j != downloading_chunks.end();++j)
-		{
-			ChunkDownload* cd = j->second;
-			if (pieceDownloader->isChoked() || !pieceDownloader->hasChunk(cd->getChunk()->getIndex()))
-				continue;
-			
-			if (cd->getNumDownloaders() == requiredPieceDownloaders) 
-			{
-				// lets favor the ones which are nearly finished
-				if (!sel || cd->getTotalPieces() - cd->getPiecesDownloaded() < sel_left)
-				{
-					sel = cd;
-					sel_left = sel->getTotalPieces() - sel->getPiecesDownloaded();
-				}
-			}
-		}
-		return sel;
-	}
-	
-
-	bool Downloader::setUnfinishedChunkDownload(PieceDownloader* pieceDownloader)
-	{
-		ChunkDownload* sel = 0;
-		
-		// See if there are ChunkDownload's which need a PieceDownloader
-		sel = selectUnfinishedChunkDownload(pieceDownloader,0);
-		if (sel)
-		{
-			return sel->assign(pieceDownloader);
-		}
-		
-		return false;
-	}
 	
 	ChunkDownload* Downloader::selectWorst(PieceDownloader* pd)
 	{
@@ -349,10 +309,6 @@ namespace bt
 
 	bool Downloader::downloadFrom(PieceDownloader* pd)
 	{
-		// first see if we can use an existing download
-		if (setUnfinishedChunkDownload(pd))
-			return true;
-		
 		Uint32 chunk_index = 0;
 		if (chunk_selector->select(pd,chunk_index))
 		{

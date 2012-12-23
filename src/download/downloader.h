@@ -293,22 +293,6 @@ namespace bt
 		bool downloadFrom(PieceDownloader* pd);
 		void downloadFrom(WebSeed* ws);
 		void normalUpdate();
-		/**
-		 * Search for (downloaded in the past, unfinished and now isn't downloading) ChunkDownload and
-		 * assign to the specified PieceDownloader
-		 * @param pieceDownloader The PieceDownloader to assign found ChunkDownload
-		 * @return true if unfinished but has already been downloading ChunkDownload was found and
-		 *  assigned to the specified PieceDownloader, false otherwise
-		 */
-		bool setUnfinishedChunkDownload(PieceDownloader* pieceDownloader);
-		
-		/**
-		 * Select the unfinished (downloading now, or downloaded part and stopped) ChunkDownload
-		 *  with specified number of assigned PieceDownloader's for a specified PieceDownloader.
-		 * @param pieceDownloader The PieceDownloader object to set the ChunkDownload to
-		 * @param requiredPieceDownloaders The number of PieceDownloader's assigned for required ChunkDownload
-		 */
-		ChunkDownload* selectUnfinishedChunkDownload(PieceDownloader* pieceDownloader,Uint32 requiredPieceDownloaders);
 		ChunkDownload* selectWorst(PieceDownloader* pd);
 		
 	private:

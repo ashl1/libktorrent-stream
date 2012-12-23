@@ -210,10 +210,10 @@ namespace bt
 		else
 		{
 			Uint32 ch = ReadUint32(packet, 1);
-			if (ch < pieces.getNumBits())
+			if (ch < chunks_availability.getNumBits())
 			{
 				pman->have(this, ch);
-				pieces.set(ch, true);
+				chunks_availability.set(ch, true);
 			}
 			else if (pman->getTorrent().isLoaded())
 			{
@@ -231,8 +231,8 @@ namespace bt
 		}
 		else
 		{
-			pieces.setAll(true);
-			pman->bitSetReceived(this, pieces);
+			chunks_availability.setAll(true);
+			pman->bitSetReceived(this, chunks_availability);
 		}
 	}
 
@@ -244,22 +244,22 @@ namespace bt
 		}
 		else
 		{
-			pieces.setAll(false);
-			pman->bitSetReceived(this, pieces);
+			chunks_availability.setAll(false);
+			pman->bitSetReceived(this, chunks_availability);
 		}
 	}
 
 	void Peer::handleBitField(const bt::Uint8* packet, Uint32 len)
 	{
-		if (len != 1 + pieces.getNumBytes())
+		if (len != 1 + chunks_availability.getNumBytes())
 		{
 			if (pman->getTorrent().isLoaded())
 				kill();
 		}
 		else
 		{
-			pieces = BitSet(packet + 1, pieces.getNumBits());
-			pman->bitSetReceived(this, pieces);
+			chunks_availability = BitSet(packet + 1, chunks_availability.getNumBits());
+			pman->bitSetReceived(this, chunks_availability);
 		}
 	}
 
@@ -670,12 +670,12 @@ namespace bt
 		// the last chunk can have a different size
 		const Torrent & tor = pman->getTorrent();
 		Uint64 bytes = 0;
-		if (pieces.get(tor.getNumChunks() - 1))
-			bytes = tor.getChunkSize() * (pieces.numOnBits() - 1) + tor.getLastChunkSize();
+		if (chunks_availability.get(tor.getNumChunks() - 1))
+			bytes = tor.getChunkSize() * (chunks_availability.numOnBits() - 1) + tor.getLastChunkSize();
 		else
-			bytes = tor.getChunkSize() * pieces.numOnBits();
+			bytes = tor.getChunkSize() * chunks_availability.numOnBits();
 
-		Uint64 tbytes = tor.getChunkSize() * (pieces.getNumBits() - 1) + tor.getLastChunkSize();
+		Uint64 tbytes = tor.getChunkSize() * (chunks_availability.getNumBits() - 1) + tor.getLastChunkSize();
 		return (float)bytes / (float)tbytes * 100.0;
 	}
 
@@ -779,7 +779,7 @@ namespace bt
 
 	bool Peer::hasWantedChunks(const bt::BitSet& wanted_chunks) const
 	{
-		BitSet bs = pieces;
+		BitSet bs = chunks_availability;
 		bs.andBitSet(wanted_chunks);
 		return bs.numOnBits() > 0;
 	}
