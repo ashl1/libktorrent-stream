@@ -190,9 +190,11 @@ namespace bt
 
     const Chunk* ChunkManager::getChunk(unsigned int i) const
     {
-	if (i >= (Uint32)d->chunks.size())
+        if (i >= (Uint32)d->chunks.size())
+				{
+					Out(SYS_DIO|LOG_DEBUG) << "\tChunkManager::getChunk( " << i << " ), but size: " << d->chunks.size() << endl;
             return 0;
-        else
+				} else
             return d->chunks[i];
     }
     

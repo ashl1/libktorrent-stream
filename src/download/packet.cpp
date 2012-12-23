@@ -72,7 +72,7 @@ namespace bt
 	{
 		size = 17;
 		data = AllocPacket(size,type);
-		WriteUint32(data,5,r.getIndex());
+		WriteUint32(data,5,r.getChunkIndex());
 		WriteUint32(data,9,r.getOffset());
 		WriteUint32(data,13,r.getLength());
 	}
@@ -103,7 +103,7 @@ namespace bt
 	{
 		if (data[4] == PIECE)
 		{
-			if (ReadUint32(data,5) != req.getIndex())
+			if (ReadUint32(data,5) != req.getChunkIndex())
 				return false;
 			
 			if (ReadUint32(data,9) != req.getOffset())

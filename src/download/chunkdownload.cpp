@@ -130,6 +130,7 @@ namespace bt
 			}
 		}
 		
+		/// TODO: Cancel downloading this piece from all PieceDownloaders
 		sendRequests();
 		return false;
 	}
@@ -189,9 +190,7 @@ namespace bt
 			if (reject)
 			{
 				// reject, so release the PieceDownloader
-				pd->release();
-				sendCancels(pd);
-				killed(pd);
+				release(pd);
 			}
 			else
 			{
@@ -199,11 +198,7 @@ namespace bt
 				ds->timeout();
 				// if we have more then one PieceDownloader and there are timeouts, release it
 				if (ds->numTimeouts() > 0 && pdown.count() > 0)
-				{
-					pd->release();
-					sendCancels(pd);
-					killed(pd);
-				}
+					release(pd);
 			}
 		}
 			
@@ -212,7 +207,7 @@ namespace bt
 	
 	void ChunkDownload::onRejected(const Request & r)
 	{
-		if (chunk->getIndex() == r.getIndex())
+		if (chunk->getIndex() == r.getChunkIndex())
 		{
 			notDownloaded(r,true);
 		}
@@ -221,9 +216,9 @@ namespace bt
 	void ChunkDownload::onTimeout(const Request & r)
 	{
 		// see if we are dealing with a piece of ours
-		if (chunk->getIndex() == r.getIndex())
+		if (chunk->getIndex() == r.getChunkIndex())
 		{
-			Out(SYS_CON|LOG_DEBUG) << QString("Request timed out %1 %2 %3 %4").arg(r.getIndex()).arg(r.getOffset()).arg(r.getLength()).arg(r.getPieceDownloader()->getName()) << endl;
+			Out(SYS_CON|LOG_DEBUG) << QString("Request timed out %1 %2 %3 %4").arg(r.getChunkIndex()).arg(r.getOffset()).arg(r.getLength()).arg(r.getPieceDownloader()->getName()) << endl;
 		
 			notDownloaded(r,false);
 		}
@@ -321,8 +316,12 @@ bool ChunkDownload::nearlyDone() const
 	void ChunkDownload::sendCancels(PieceDownloader* pd)
 	{
 		DownloadStatus* ds = dstatus.find(pd);
+		
 		if (!ds)
+		{
+			Out(SYS_DIO|LOG_DEBUG) << "\tChunkDownload::sendCancels WON'T SEND CANCELS: DownloadStatus is undefned" << endl;
 			return;
+		}
 		
 		DownloadStatus::iterator itr = ds->begin();
 		while (itr != ds->end())
@@ -337,6 +336,8 @@ bool ChunkDownload::nearlyDone() const
 		}
 		ds->clear();
 		timer.update();
+		
+		Out(SYS_DIO|LOG_DEBUG) << "\tChunkDownload::sendCancels Cancels for chunk " << getChunkIndex() << " was sent" << endl;
 	}
 	
 	void ChunkDownload::endgameCancel(const Piece & p)
@@ -356,17 +357,6 @@ bool ChunkDownload::nearlyDone() const
 		}
 	}
 
-	void ChunkDownload::killed(PieceDownloader* pd)
-	{
-		if (!pdown.contains(pd))
-			return;
-
-		dstatus.erase(pd);
-		pdown.removeAll(pd);
-		disconnect(pd,SIGNAL(timedout(bt::Request)),this,SLOT(onTimeout(bt::Request)));
-		disconnect(pd,SIGNAL(rejected(bt::Request)),this,SLOT(onRejected(bt::Request)));
-	}
-	
 	Uint64 ChunkDownload::getAverageDownloadSpeed() const
 	{
 		/// TODO:

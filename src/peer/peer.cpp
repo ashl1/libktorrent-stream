@@ -41,6 +41,7 @@
 #include <net/reverseresolver.h>
 #include "utmetadata.h"
 
+#include <util/log.h>
 
 using namespace net;
 
@@ -62,7 +63,8 @@ namespace bt
 			: PeerInterface(peer_id, num_chunks), 
 			sock(sock), 
 			token(token), 
-			pman(pman)
+			pman(pman),
+			received_have_message(false)
 	{
 		id = peer_id_counter;
 		peer_id_counter++;
@@ -137,6 +139,18 @@ namespace bt
 		token.clear();
 	}
 
+	const BitSet& Peer::getChunksAvailability() const
+	{
+		if (!received_have_message)
+		{
+			/// FIXME:
+// 			Out(SYS_DIO|LOG_DEBUG) << "\tPeer::getChunksAvailability\t\tDONT HAVE INFO ABOUT CHUNKS AVAILABILITY!!!" << endl;
+			chunks_availability.allOn();
+		}
+		return chunks_availability;
+		
+	}
+
 	void Peer::handleChoke(Uint32 len)
 	{
 		if (len != 1)
@@ -209,6 +223,7 @@ namespace bt
 		}
 		else
 		{
+			received_have_message = true;
 			Uint32 ch = ReadUint32(packet, 1);
 			if (ch < chunks_availability.getNumBits())
 			{
@@ -231,6 +246,7 @@ namespace bt
 		}
 		else
 		{
+			received_have_message = true;
 			chunks_availability.setAll(true);
 			pman->bitSetReceived(this, chunks_availability);
 		}
@@ -258,7 +274,10 @@ namespace bt
 		}
 		else
 		{
+			received_have_message = true;
 			chunks_availability = BitSet(packet + 1, chunks_availability.getNumBits());
+// 			Out(SYS_DIO|LOG_DEBUG) << "\tPeer::handleBitField peer " << (Uint64)this << endl << chunks_availability << endl;
+
 			pman->bitSetReceived(this, chunks_availability);
 		}
 	}

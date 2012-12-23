@@ -38,12 +38,15 @@ namespace bt
 	class KTORRENT_EXPORT StreamingChunkSelector : public bt::ChunkSelector
 	{
 		Q_OBJECT
+		
+		friend class ManagerOfStream;
+		
 	public:
 		StreamingChunkSelector();
 		virtual ~StreamingChunkSelector();
 		
 		virtual void init(ChunkManager* cman, Downloader* downer, PeerManager* pman);
-		virtual bool select(bt::PieceDownloader* pd, bt::Uint32& chunk);
+		virtual bool select(bt::PieceDownloader* pd, bt::Uint32& chunk_index);
 		virtual void dataChecked(const bt::BitSet& ok_chunks, Uint32 from, Uint32 to);
 		virtual void reincluded(bt::Uint32 from, bt::Uint32 to);
 		virtual void reinsert(bt::Uint32 chunk);

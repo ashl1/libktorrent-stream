@@ -19,6 +19,8 @@
  ***************************************************************************/
 
 #include "torrentfilestream.h"
+
+#include <cassert>
 #include <QPointer>
 #include <diskio/chunkmanager.h>
 #include <diskio/piecedata.h>
@@ -347,6 +349,13 @@ namespace bt
 		if (pos < 0 || !tc)
 			return false;
 		
+		Out(SYS_DIO|LOG_DEBUG) << "\tSeek position: " << pos << " bytes.\tTorrent size: " << 
+			tc->getStats().total_bytes << "\tFile size: " << tc->getTorrentFile(file_index).getSize() << " bytes" << endl;
+		if (tc->getStats().multi_file_torrent)
+			assert(pos < tc->getTorrentFile(file_index).getSize());
+		else
+			assert(pos < tc->getStats().total_bytes);
+
 		current_byte_offset = pos;
 		current_chunk_offset = 0;
 		current_chunk_data = PieceData::Ptr();

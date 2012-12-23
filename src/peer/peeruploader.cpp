@@ -62,10 +62,10 @@ namespace bt
 		{	
 			Request r = requests.front();
 			
-			Chunk* c = cman.getChunk(r.getIndex());	
+			Chunk* c = cman.getChunk(r.getChunkIndex());	
 			if (c && c->getStatus() == Chunk::ON_DISK)
 			{
-				if (!peer->sendChunk(r.getIndex(),r.getOffset(),r.getLength(),c))
+				if (!peer->sendChunk(r.getChunkIndex(),r.getOffset(),r.getLength(),c))
 				{
 					if (peer->getStats().fast_extensions)
 						peer->sendReject(r);

@@ -93,18 +93,16 @@ namespace bt {
 	private:
 		class Chunk;
 		
+		static bool cmpPeersInsideBufferRequired(const PieceDownloader* first, const PieceDownloader* second);
+		static bool cmpPeersInsideBufferPreferred(const PieceDownloader* first, const PieceDownloader* second);
+		static bool cmpPeersOutsideBufferPreferred(const PieceDownloader* first, const PieceDownloader* second);
+		
 		/**
 		 * Delete peers from the peers_sorted are downloading the chunk with index less or equal to chunk_index
 		 * @param peers_sorted[in,out] The list of peers have been already sorted by index of chunk descending
 		 * @param chunk_index[in] The index of the chunk, the peers are downloading the chunks with index less or equal to will be deleted from peers_sorted
 		 */
 		static void deleteFromListPeersDownloadedMorePrioritizedChunks(QList<PieceDownloader*> &peers_sorted, Uint32 chunk_index);
-		
-		/**
-		 * Move (copy and erase original) the PieceDownloader from the peers_list_move_from into peers_list_move_into which
-		 *  are downloading the chunks in the specified chunk range
-		 */
-		static void movePeersDownloadingChunksInRange(QList<PieceDownloader*>& peers_list_move_from, QList<PieceDownloader*>& peers_list_move_into, Uint32 chunk_index_range_starts_from, Uint32 chunk_index_range_finish_to);
 		
 		/**
 		 * Determine the chunk with minimum index from \ref ManagerOfStream_Terminology_BufferRequired
@@ -130,6 +128,12 @@ namespace bt {
 		 * In case the last time chunk was played for is less than current chunk have already played, return 0
 		 */
 		TimeStamp getTimeCurrentChunkFinishPlaying() const;
+		
+		/**
+		 * Move (copy and erase original) the PieceDownloader from the peers_list_move_from into peers_list_move_into which
+		 *  are assigned to download any of the chunks in the specified range
+		 */
+		void movePeersAssignedForChunksInRange(QList<PieceDownloader*>& peers_list_move_from, QList<PieceDownloader*>& peers_list_move_into, Uint32 chunk_index_range_starts_from, Uint32 chunk_index_range_finish_to);
 		
 		/**
 		 * Try to reassign peers to specified in chunk_reassign_to to meet \ref ManagerOfStream_Terminology_RequiredCondition:
@@ -193,7 +197,7 @@ namespace bt {
 		
 		/**
 		 * The list of peers are now downloading only chunks inside \ref ManagerOfStream_Terminology_BufferRequired
-		 * sorted by chunk index descending and (as second ordering) by downloading rate descending.
+		 * sorted by index of downloading chunk descending and (as second ordering) by downloading rate descending.
 		 * Use only one-level list (sorted list grouped by chunk index).
 		 */
 		QList<PieceDownloader*> peers_inside_required_buffer;
