@@ -112,7 +112,7 @@ namespace bt
 		
 		if (!endgame && downer->numDownloadersForChunk(sel) >= max_peers_per_chunk)
 		{
-			ChunkDownload* cd = downer->download(sel);
+			ChunkDownload* cd = downer->getChunkDownload(sel);
 			if (!cd)
 				return alternative;
 			

@@ -19,9 +19,12 @@
  ***************************************************************************/
 
 #include "streamingchunkselector.h"
+
 #include <diskio/chunkmanager.h>
 #include <interfaces/piecedownloader.h>
+#include <util/log.h>
 #include "downloader.h"
+#include "managerofstream.h"
 
 namespace bt
 {
@@ -30,8 +33,7 @@ namespace bt
 	
 	StreamingChunkSelector::StreamingChunkSelector()
 		: range_start(0), range_end(0), cursor(0), critical_window_size(1)
-	{
-	}
+	{}
 	
 	StreamingChunkSelector::~StreamingChunkSelector()
 	{
@@ -50,6 +52,9 @@ namespace bt
 		for (Uint32 i = 0;i <= range_end;i++)
 			if (cman->getChunk(i)->getPriority() == bt::PREVIEW_PRIORITY)
 				preview_chunks.insert(i);
+			
+		manager_of_stream = new ManagerOfStream(this, downer);
+		manager_of_stream->Init();
 	}
 
 	
@@ -59,6 +64,7 @@ namespace bt
 		{
 			cursor = chunk;
 			updateRange();
+			emit anotherChunkAsked(chunk);
 		}
 	}
 	
@@ -139,73 +145,104 @@ namespace bt
 			return false;
 	}
 
-
-
 	bool StreamingChunkSelector::select(bt::PieceDownloader* pd, bt::Uint32& chunk)
 	{
-		// Always give precendence to preview chunks
-		if (selectFromPreview(pd, chunk))
+		Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select - will from buffer required" << endl;
+		if (manager_of_stream->selectChunkFromBufferRequiredNotMeetRequirement(pd, chunk))
 			return true;
+		Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select - will from buffer preferred" << endl;
+		if (manager_of_stream->selectChunkFromBufferPreferred(pd, chunk))
+			return true;
+		
+		Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select - will another algo" << endl;
+		
+// 		Select by algo:
+// 		- normal distribution (calculates each seeking)
+// 		- binomial distribution (like Cantor set)
+// 		- periodic normal distribution with period 5-10 (calculated once for torrent)
+// 		- statistical info based on user seekings in the past grouped by content type (video, audio) (calculate once for torrent)
 		
 		const BitSet & bs = cman->getBitSet();
-		Uint32 critical_chunk = INVALID_CHUNK;
-		Uint32 critical_chunk_downloaders = INVALID_CHUNK;
-		Uint32 non_critical_chunk = INVALID_CHUNK;
-		
-		std::list<Uint32>::iterator itr = range.begin();
-		while (itr != range.end())
+		for (Uint32 chunk_index = range_end; chunk_index > cursor; --chunk_index)
 		{
-			Uint32 chunk_index = *itr;
-			const Chunk* chunk = cman->getChunk(chunk_index);
-			
-			// if we have the chunk remove it from the list
-			if (bs.get(chunk_index))
-			{
-				std::list<Uint32>::iterator tmp = itr;
-				itr++;
-				range.erase(tmp);
+			/// TODO: Determne the reason, why pd->hasChunk return fale for all chunks
+			Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select\tchunk( " << chunk_index << " )" << endl <<
+				"\t\tdownloaded? " << bs.get(chunk_index) << endl <<
+				"\t\tPieceDownloader has chunk? " << pd->hasChunk(chunk_index) << endl;
+			if (!bs.get(chunk_index) && pd->hasChunk(chunk_index)) {
+				Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select - finish 1" << endl;
+				return true;
 			}
-			else if (pd->hasChunk(chunk_index) && !chunk->isExcluded() && !chunk->isExcludedForDownloading())
-			{
-				if (chunk_index < cursor + critical_window_size)
-				{
-					// Attempt to find the critical chunk with the least downloaders
-					Uint32 nd = downer->numDownloadersForChunk(chunk_index);
-					if (critical_chunk == INVALID_CHUNK || nd < critical_chunk_downloaders)
-					{
-						critical_chunk = chunk_index;
-						critical_chunk_downloaders = nd;
-					}
-				}
-				else if (!downer->isChunkDownloading(chunk_index))
-				{
-					// Stop at the first non critical chunk
-					non_critical_chunk = chunk_index;
-					break;
-				}
-				
-				itr++;
-			}
-			else
-				itr++;
 		}
-		
-		if (critical_chunk != INVALID_CHUNK)
-		{
-			chunk = critical_chunk;
-			return true;
-		}
-		else if (non_critical_chunk != INVALID_CHUNK)
-		{
-			chunk = non_critical_chunk;
-			return true;
-		}
-		else
-		{
-			// If we haven't found one, use the default selection algorithm
-			return bt::ChunkSelector::select(pd, chunk);
-		}
+		Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select - finish 2" << endl;
+		return false;
 	}
+
+// 	bool StreamingChunkSelector::select(bt::PieceDownloader* pd, bt::Uint32& chunk)
+// 	{
+// 		// Always give precendence to preview chunks
+// 		if (selectFromPreview(pd, chunk))
+// 			return true;
+// 		
+// 		const BitSet & bs = cman->getBitSet();
+// 		Uint32 critical_chunk = INVALID_CHUNK;
+// 		Uint32 critical_chunk_downloaders = INVALID_CHUNK;
+// 		Uint32 non_critical_chunk = INVALID_CHUNK;
+// 		
+// 		std::list<Uint32>::iterator itr = range.begin();
+// 		while (itr != range.end())
+// 		{
+// 			Uint32 chunk_index = *itr;
+// 			const Chunk* chunk = cman->getChunk(chunk_index);
+// 			
+// 			// if we have the chunk remove it from the list
+// 			if (bs.get(chunk_index))
+// 			{
+// 				std::list<Uint32>::iterator tmp = itr;
+// 				itr++;
+// 				range.erase(tmp);
+// 			}
+// 			else if (pd->hasChunk(chunk_index) && !chunk->isExcluded() && !chunk->isExcludedForDownloading())
+// 			{
+// 				if (chunk_index < cursor + critical_window_size)
+// 				{
+// 					// Attempt to find the critical chunk with the least downloaders
+// 					Uint32 nd = downer->numDownloadersForChunk(chunk_index);
+// 					if (critical_chunk == INVALID_CHUNK || nd < critical_chunk_downloaders)
+// 					{
+// 						critical_chunk = chunk_index;
+// 						critical_chunk_downloaders = nd;
+// 					}
+// 				}
+// 				else if (!downer->isChunkDownloading(chunk_index))
+// 				{
+// 					// Stop at the first non critical chunk
+// 					non_critical_chunk = chunk_index;
+// 					break;
+// 				}
+// 				
+// 				itr++;
+// 			}
+// 			else
+// 				itr++;
+// 		}
+// 		
+// 		if (critical_chunk != INVALID_CHUNK)
+// 		{
+// 			chunk = critical_chunk;
+// 			return true;
+// 		}
+// 		else if (non_critical_chunk != INVALID_CHUNK)
+// 		{
+// 			chunk = non_critical_chunk;
+// 			return true;
+// 		}
+// 		else
+// 		{
+// 			// If we haven't found one, use the default selection algorithm
+// 			return bt::ChunkSelector::select(pd, chunk);
+// 		}
+// 	}
 
 	void StreamingChunkSelector::dataChecked(const bt::BitSet& ok_chunks, Uint32 from, Uint32 to)
 	{

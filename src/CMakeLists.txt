@@ -90,6 +90,7 @@ set(libktorrent_SRC
 	download/downloader.cpp
 	download/httpconnection.cpp
 	download/streamingchunkselector.cpp
+	download/managerofstream.cpp
 
 	interfaces/piecedownloader.cpp
 	interfaces/peerinterface.cpp

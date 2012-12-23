@@ -19,6 +19,7 @@
  ***************************************************************************/
 #include "peerdownloader.h"
 
+#include <limits>
 #include <math.h>
 #include <util/functions.h>
 #include <util/log.h>
@@ -70,7 +71,7 @@ namespace bt
 		return *this;
 	}
 
-	PeerDownloader::PeerDownloader(Peer* peer,Uint32 chunk_size) : peer(peer),chunk_size(chunk_size / MAX_PIECE_LEN)
+	PeerDownloader::PeerDownloader(Peer* peer,Uint32 chunk_size) : peer(peer),pieces_in_chunk(chunk_size / MAX_PIECE_LEN)
 	{
 		connect(peer,SIGNAL(destroyed()),this,SLOT(peerDestroyed()));
 		max_wait_queue_size = 25;
@@ -171,9 +172,19 @@ namespace bt
 	bool PeerDownloader::hasChunk(Uint32 idx) const
 	{
 		if (peer)
-			return peer->getPiecesAvailability().get(idx);
-		else
+		{
+			Out(SYS_DIO|LOG_DEBUG) << "\tPeerDownloader::hasChunk: peer" << endl;
+			return peer->getChunksAvailability().get(idx);
+		} else {
+			Out(SYS_DIO|LOG_DEBUG) << "\tPeerDownloader::hasChunk: NOT peer" << endl;
 			return false;
+		}
+	}
+
+	Uint32 PeerDownloader::getAverageDownloadRate() const
+	{
+		/// TODO:
+		return getDownloadRate();
 	}
 
 	Uint32 PeerDownloader::getDownloadRate() const
@@ -182,6 +193,13 @@ namespace bt
 			return peer->getDownloadRate();
 		else
 			return 0;
+	}
+	
+	Uint32 PeerDownloader::getDownloadRate(Uint32 chunk_index) const
+	{
+		if (!reqs.isEmpty() && reqs.first().req.getIndex() == chunk_index)
+			return getDownloadRate();
+		return 0;
 	}
 	
 	void PeerDownloader::checkTimeouts()
@@ -196,7 +214,22 @@ namespace bt
 		while (!reqs.isEmpty() && (now - reqs.first().time_stamp > MAX_INTERVAL))
 			timedout(reqs.takeFirst().req);
 	}
-	
+
+	Uint32 PeerDownloader::getMinimumIndexDownloadingChunk() const
+	{
+		Uint32 minimum_chunk_index = std::numeric_limits<Uint32>::max();
+		Uint32 index = 0;
+		
+		foreach (TimeStampedRequest request, reqs)
+		{
+			index = request.req.getIndex();
+			if (index < minimum_chunk_index)
+				minimum_chunk_index = index;
+		}
+		
+		return minimum_chunk_index;
+	}
+
 	Uint32 PeerDownloader::getMaxChunkDownloads() const
 	{
 		// get the download rate in KB/sec
@@ -204,16 +237,30 @@ namespace bt
 		rate_kbs = rate_kbs / 1024;
 		Uint32 num_extra = rate_kbs / 25;
 		
-		if (chunk_size >= 16)
+		if (pieces_in_chunk >= 16)
 		{
-			return 1 + 16 * num_extra / chunk_size;
+			return 1 + 16 * num_extra / pieces_in_chunk;
 		}
 		else
 		{
-			return 1 + (16 / chunk_size) * num_extra;
+			return 1 + (16 / pieces_in_chunk) * num_extra;
 		}
 	}
 	
+	bool PeerDownloader::isDownloadingChunkFromRange(Uint32 chunk_index_from, Uint32 chunk_index_to) const
+	{
+		Uint32 index = 0;
+		
+		foreach (TimeStampedRequest request, reqs)
+		{
+			index = request.req.getIndex();
+			if (index >= chunk_index_from && index <= chunk_index_to)
+				return true;
+		}
+		
+		return false;
+	}
+
 	void PeerDownloader::choked()
 	{
 		// when the peers supports the fast extensions, choke does not mean that all

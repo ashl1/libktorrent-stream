@@ -137,7 +137,10 @@ namespace bt
 		 */
 		void checkTimeouts();
 		
-		/// Get the maximum number of chunk downloads
+		/**
+		 * Get the maximum number of chunk downloads supported by this Peer. (dynamically changed and
+		 * 	depend on current download rate and the number of pieces in the chunk for the torrent)
+		 */
 		Uint32 getMaxChunkDownloads() const;
 				
 		/**
@@ -147,7 +150,11 @@ namespace bt
 		void choked();
 		
 		virtual QString getName() const;
+		virtual Uint32 getAverageDownloadRate() const;
 		virtual Uint32 getDownloadRate() const;
+		virtual Uint32 getDownloadRate(Uint32 chunk_index) const;
+		virtual Uint32 getMinimumIndexDownloadingChunk() const;
+		virtual bool isDownloadingChunkFromRange(Uint32 chunk_index_from, Uint32 chunk_index_to) const;
 		
 		/**
 		 * Called when a piece has arrived.
@@ -192,10 +199,12 @@ namespace bt
 		
 	private:
 		Peer* peer;
+		/// The list of Requests have been sent and waiting for reply to
 		QList<TimeStampedRequest> reqs;
+		/// The list of Requests awaiting sending
 		QList<Request> wait_queue;
 		Uint32 max_wait_queue_size;
-		Uint32 chunk_size;
+		Uint32 pieces_in_chunk;
 	};
 
 }

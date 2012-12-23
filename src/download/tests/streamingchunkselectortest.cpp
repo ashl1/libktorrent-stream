@@ -148,7 +148,7 @@ private slots:
 		for (Uint32 i = 20;i < csel->criticialWindowSize();i++)
 		{
 			QVERIFY(downer->isChunkDownloading(i));
-			QVERIFY(downer->download(i)->getNumDownloaders() == 32 / csel->criticialWindowSize());
+			QVERIFY(downer->getChunkDownload(i)->getNumDownloaders() == 32 / csel->criticialWindowSize());
 		}
 		
 		for (Uint32 i = 0;i < 32;i++)

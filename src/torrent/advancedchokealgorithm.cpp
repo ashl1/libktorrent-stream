@@ -58,7 +58,7 @@ namespace bt
 		bool should_be_interested = false;
 		// before we start calculating first check if we have piece that the peer doesn't have
 		const BitSet & ours = cman.getBitSet();
-		const BitSet & theirs = p->getPiecesAvailability();
+		const BitSet & theirs = p->getChunksAvailability();
 		for (Uint32 i = 0;i < ours.getNumBits();i++)
 		{
 			if (ours.get(i) && !theirs.get(i))

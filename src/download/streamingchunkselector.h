@@ -28,6 +28,8 @@
 
 namespace bt 
 {
+	class ManagerOfStream;
+	
 	/**
 		ChunkSelector which supports streaming mode.
 		It has a range of chunks which are to be downloaded sequentially. And it has a cursor, to support jumping around 
@@ -35,6 +37,7 @@ namespace bt
 	 */
 	class KTORRENT_EXPORT StreamingChunkSelector : public bt::ChunkSelector
 	{
+		Q_OBJECT
 	public:
 		StreamingChunkSelector();
 		virtual ~StreamingChunkSelector();
@@ -48,6 +51,8 @@ namespace bt
 		
 		/// Get the critical window size in chunks
 		Uint32 criticialWindowSize() const {return critical_window_size;}
+		
+		Uint32 getIndexChunkAskedLast() const {return cursor;}
 		
 		/**
 			Set the range to be downloaded sequentially.
@@ -65,6 +70,9 @@ namespace bt
 		void initRange();
 		bool selectFromPreview(bt::PieceDownloader* pd, bt::Uint32& chunk);
 		
+	signals:
+		void anotherChunkAsked(Uint32 chunk_index);
+		
 	private:
 		bt::Uint32 range_start;
 		bt::Uint32 range_end;
@@ -72,6 +80,7 @@ namespace bt
 		bt::Uint32 critical_window_size;
 		std::list<Uint32> range;
 		std::set<Uint32> preview_chunks;
+		ManagerOfStream* manager_of_stream;
 	};
 
 }

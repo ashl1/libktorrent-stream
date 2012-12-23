@@ -64,22 +64,22 @@ namespace bt
 	
 	ChunkDownload::ChunkDownload(Chunk* chunk) : chunk(chunk)
 	{
-		num = num_downloaded = 0;
-		num = chunk->getSize() / MAX_PIECE_LEN;
+		total_pieces_number = downloaded_pieces_number = 0;
+		total_pieces_number = chunk->getSize() / MAX_PIECE_LEN;
 		
 		if (chunk->getSize() % MAX_PIECE_LEN != 0)
 		{
 			last_size = chunk->getSize() % MAX_PIECE_LEN;
-			num++;
+			total_pieces_number++;
 		}
 		else
 		{
 			last_size = MAX_PIECE_LEN;
 		}
 		
-		pieces = BitSet(num);
+		pieces = BitSet(total_pieces_number);
 		pieces.clear();
-		piece_data = new PieceData::Ptr[num]; // array of pointers to the piece data
+		piece_data = new PieceData::Ptr[total_pieces_number]; // array of pointers to the piece data
 		
 		dstatus.setAutoDelete(true);
 
@@ -92,16 +92,15 @@ namespace bt
 		delete [] piece_data;
 	}
 
-	bool ChunkDownload::piece(const Piece & p,bool & ok)
+	bool ChunkDownload::pieceReceived(const Piece & p,bool & is_needed)
 	{
-		ok = false;
+		is_needed = false;
 		timer.update();
 			
 		Uint32 pp = p.getOffset() / MAX_PIECE_LEN;
-		Uint32 len = pp == num - 1 ? last_size : MAX_PIECE_LEN;
-		if (pp >= num || pieces.get(pp) || p.getLength() != len)
+		Uint32 len = pp == total_pieces_number - 1 ? last_size : MAX_PIECE_LEN;
+		if (pp >= total_pieces_number || pieces.get(pp) || p.getLength() != len)
 			return false;
-
 	
 		DownloadStatus* ds = dstatus.find(p.getPieceDownloader());
 		if (ds)
@@ -111,10 +110,10 @@ namespace bt
 		if (buf && buf->write(p.getData(),p.getLength()) == p.getLength())
 		{
 			piece_data[pp] = buf;
-			ok = true;
+			is_needed = true;
 			pieces.set(pp,true);
 			piece_providers.insert(p.getPieceDownloader());
-			num_downloaded++;
+			downloaded_pieces_number++;
 			if (pdown.count() > 1)
 			{
 				endgameCancel(p);
@@ -122,7 +121,7 @@ namespace bt
 			
 			updateHash();
 			
-			if (num_downloaded >= num)
+			if (downloaded_pieces_number >= total_pieces_number)
 			{
 				// finalize hash
 				hash_gen.end();
@@ -232,10 +231,10 @@ namespace bt
 	
 	Uint32 ChunkDownload::bestPiece(PieceDownloader* pd)
 	{
-		Uint32 best = num;
+		Uint32 best = total_pieces_number;
 		Uint32 best_count = 0;
 		// select the piece which is being downloaded the least
-		for (Uint32 i = 0;i < num;i++)
+		for (Uint32 i = 0;i < total_pieces_number;i++)
 		{
 			if (pieces.get(i))
 				continue;
@@ -258,7 +257,7 @@ namespace bt
 				return i;
 			
 			// check if the piece is better then the current best
-			if (best == num || best_count > times_downloading)
+			if (best == total_pieces_number || best_count > times_downloading)
 			{
 				best_count = times_downloading;
 				best = i;
@@ -294,14 +293,13 @@ namespace bt
 		
 		// get the best piece to download
 		Uint32 bp = bestPiece(pd);
-		if (bp >= num)
+		if (bp >= total_pieces_number)
 			return false;
 		
-		pd->download(Request(chunk->getIndex(),bp*MAX_PIECE_LEN,bp+1<num ? MAX_PIECE_LEN : last_size,pd));
+		pd->download(Request(chunk->getIndex(),bp*MAX_PIECE_LEN,bp+1<total_pieces_number ? MAX_PIECE_LEN : last_size,pd));
 		ds->add(bp);
 		
-		Uint32 left = num - num_downloaded;
-		if (left < 2 && left > 0)
+		if (nearlyDone())
 			pd->setNearlyDone(true);
 		
 		return true;
@@ -313,6 +311,12 @@ namespace bt
 		sendRequests();
 	}
 	
+bool ChunkDownload::nearlyDone() const
+	{
+		Uint32 left = total_pieces_number - downloaded_pieces_number;
+		return (left < 2) && (left > 0);
+	}
+
 	
 	void ChunkDownload::sendCancels(PieceDownloader* pd)
 	{
@@ -328,7 +332,7 @@ namespace bt
 					Request(
 						chunk->getIndex(),
 						i*MAX_PIECE_LEN,
-						i+1<num ? MAX_PIECE_LEN : last_size,0));
+						i+1<total_pieces_number ? MAX_PIECE_LEN : last_size,0));
 			itr++;
 		}
 		ds->clear();
@@ -363,6 +367,13 @@ namespace bt
 		disconnect(pd,SIGNAL(rejected(bt::Request)),this,SLOT(onRejected(bt::Request)));
 	}
 	
+	Uint64 ChunkDownload::getAverageDownloadSpeed() const
+	{
+		/// TODO:
+		return getDownloadSpeed();
+	}
+
+	
 	Uint32 ChunkDownload::getChunkIndex() const
 	{
 		return chunk->getIndex();
@@ -388,12 +399,10 @@ namespace bt
 	{
 		Uint32 r = 0;
 		foreach (PieceDownloader* pd,pdown)
-			r += pd->getDownloadRate();
+			r += pd->getDownloadRate(getChunkIndex());
 		
 		return r;
 	}
-	
-
 
 	void ChunkDownload::save(File & file)
 	{	
@@ -436,16 +445,16 @@ namespace bt
 	bool ChunkDownload::load(File & file,ChunkDownloadHeader & hdr,bool update_hash)
 	{
 		// read pieces
-		if (hdr.num_bits != num)
+		if (hdr.num_bits != total_pieces_number)
 			return false; 
 		
 		pieces = BitSet(hdr.num_bits);
 		file.read(pieces.getData(),pieces.getNumBytes());
 		pieces.updateNumOnBits();
 		
-		num_downloaded = pieces.numOnBits();
+		downloaded_pieces_number = pieces.numOnBits();
 		Uint32 num_pieces_to_follow = 0;
-		if (file.read(&num_pieces_to_follow,sizeof(Uint32)) != sizeof(Uint32) || num_pieces_to_follow > num)
+		if (file.read(&num_pieces_to_follow,sizeof(Uint32)) != sizeof(Uint32) || num_pieces_to_follow > total_pieces_number)
 			return false;
 		
 		for (Uint32 i = 0;i < num_pieces_to_follow;i++)
@@ -454,7 +463,7 @@ namespace bt
 			if (file.read(&phdr,sizeof(PieceHeader)) != sizeof(PieceHeader))
 				return false;
 			
-			if (phdr.piece >= num)
+			if (phdr.piece >= total_pieces_number)
 				return false;
 			
 			PieceData::Ptr p = chunk->getPiece(phdr.piece * MAX_PIECE_LEN,phdr.size,false);
@@ -480,25 +489,31 @@ namespace bt
 		
 		// add a 0 downloader, so that pieces downloaded
 		// in a previous session cannot get a peer banned in this session
-		if (num_downloaded) 
+		if (downloaded_pieces_number) 
 			piece_providers.insert(0);
 
 		return true;
 	}
 
-	Uint32 ChunkDownload::bytesDownloaded() const
+	Uint64 ChunkDownload::bytesDownloaded() const
 	{
-		Uint32 num_bytes = 0;
-		for (Uint32 i = 0;i < num;i++)
+		Uint64 num_bytes = 0;
+		for (Uint32 i = 0;i < total_pieces_number;i++)
 		{
 			if (pieces.get(i))
 			{
-				num_bytes += i == num-1 ? last_size : MAX_PIECE_LEN;
+				num_bytes += i == total_pieces_number-1 ? last_size : MAX_PIECE_LEN;
 			}
 		}
 		return num_bytes;
 	}
 
+	Uint64 ChunkDownload::bytesLeft() const
+	{
+		return chunk->getSize() - bytesDownloaded();
+	}
+
+	
 	void ChunkDownload::cancelAll()
 	{
 		QList<PieceDownloader*>::iterator i = pdown.begin();
@@ -527,8 +542,8 @@ namespace bt
 		s.current_peer_id = getPieceDownloaderName();
 		s.download_speed = getDownloadSpeed();
 		s.num_downloaders = getNumDownloaders();
-		s.pieces_downloaded = num_downloaded;
-		s.total_pieces = num;
+		s.pieces_downloaded = downloaded_pieces_number;
+		s.total_pieces = total_pieces_number;
 	}
 	
 	bool ChunkDownload::isChoked() const
@@ -549,13 +564,13 @@ namespace bt
 	{
 		// update the hash until where we can
 		Uint32 nn = num_pieces_in_hash;
-		while (nn < num && pieces.get(nn))
+		while (nn < total_pieces_number && pieces.get(nn))
 			nn++;
 		
 		for (Uint32 i = num_pieces_in_hash;i < nn;i++)
 		{
 			PieceData::Ptr piece = piece_data[i];
-			Uint32 len = i == num - 1 ? last_size : MAX_PIECE_LEN;
+			Uint32 len = i == total_pieces_number - 1 ? last_size : MAX_PIECE_LEN;
 			if (!piece)
 				piece = chunk->getPiece(i*MAX_PIECE_LEN,len,true);
 			

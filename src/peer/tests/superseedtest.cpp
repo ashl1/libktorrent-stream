@@ -51,18 +51,18 @@ public:
 	
 	void reset()
 	{
-		pieces.setAll(false);
+		chunks_availability.setAll(false);
 		allowed_chunk = INVALID_CHUNK;
 	}
 	
 	void have(Uint32 chunk)
 	{
-		pieces.set(chunk,true);
+		chunks_availability.set(chunk,true);
 	}
 	
 	void haveAll()
 	{
-		pieces.setAll(true);
+		chunks_availability.setAll(true);
 	}
 	
 	virtual void kill() 

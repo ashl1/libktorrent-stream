@@ -96,6 +96,26 @@ namespace bt
 		TCP,
 		UTP
 	};
+	
+	/**
+	 * Determine the size of \ref ManagerOfStream_Terminology_BufferRequired in seconds
+	 * Will be recalculate in ManagerOfStream::getSizeOfBufferRequired()
+	 */
+	const Uint8 SECONDS_IN_BUFFER_REQUIRED = 10;
+	/**
+	 * Determine the time the Chunk can be played for. It requires until the ManagerOfStream
+	 *  will receive information about using chunks (while playing).
+	 * 1 second
+	 */
+	const TimeStamp INITIAL_TIME_CHUNK_PLAYED_FOR = 1000;
+	
+	/**
+	 * The reserve of download rate bandwitch for switching Peers between ChunkDownloads
+	 * In bytes|seconds
+	 */
+	const Uint64 STREAMING_SPEED_RESERVE = 20 * 1024;
+	
+	const Uint32 MSECONDS_MANAGER_OF_STREAM_UPDATED = 2000;
 }
 
 

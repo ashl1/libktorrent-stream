@@ -159,6 +159,8 @@ namespace bt
          */
         Chunk* getChunk(unsigned int i);
 
+	const Chunk* getChunk(unsigned int i) const;
+				
         /**
          * Reset a chunk as if it were never downloaded.
          * @param i The chunk

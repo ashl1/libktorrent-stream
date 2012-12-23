@@ -8,6 +8,7 @@ set (download_HDR
 	packet.h
 	chunkselector.h
 	webseed.h
+	managerofstream.h
 )
 
 install(FILES ${download_HDR} DESTINATION ${INCLUDE_INSTALL_DIR}/libktorrent/download COMPONENT Devel)

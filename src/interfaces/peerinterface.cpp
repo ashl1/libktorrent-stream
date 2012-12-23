@@ -23,7 +23,7 @@
 namespace bt
 {
 
-	PeerInterface::PeerInterface(const PeerID & peer_id, Uint32 num_chunks) : peer_id(peer_id),pieces(num_chunks)
+	PeerInterface::PeerInterface(const PeerID & peer_id, Uint32 num_chunks) : peer_id(peer_id),chunks_availability(num_chunks)
 	{
 		stats.interested = false;
 		stats.am_interested = false;

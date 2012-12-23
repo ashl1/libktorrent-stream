@@ -105,6 +105,24 @@ namespace bt
 		qDeleteAll(webseeds);
 	}
 	
+	bool Downloader::assignPieceDownloaderToChunk(PieceDownloader* piece_downloader, Uint32 chunk_index)
+	{
+		ChunkDownload* chunk_download = getChunkDownload(chunk_index);
+		if (chunk_download)
+		{
+			return chunk_download->assign(piece_downloader);
+		} else {
+			Chunk* c = cman.getChunk(chunk_index);
+			chunk_download = new ChunkDownload(c);
+
+			downloading_chunks.insert(chunk_index,chunk_download);
+			chunk_download->assign(piece_downloader);
+			if (tmon)
+				tmon->downloadStarted(chunk_download);
+			return true;
+		}
+	}
+
 	void Downloader::setChunkSelector(ChunkSelectorInterface* csel)
 	{
 		delete chunk_selector;
@@ -128,12 +146,12 @@ namespace bt
 		{
 			unnecessary_data += p.getLength();
 			Out(SYS_DIO|LOG_DEBUG) << 
-					"Unnecessary piece, total unnecessary data : " << BytesToString(unnecessary_data) << endl;
+					"Unnecessary piece (chunk already finished), total unnecessary data : " << BytesToString(unnecessary_data) << endl;
 			return;
 		}
 		
 		bool ok = false;
-		if (cd->piece(p,ok))
+		if (cd->pieceReceived(p,ok))
 		{
 			if (tmon)
 				tmon->downloadRemoved(cd);
@@ -335,23 +353,10 @@ namespace bt
 		if (setUnfinishedChunkDownload(pd))
 			return true;
 		
-		Uint32 chunk = 0;
-		if (chunk_selector->select(pd,chunk))
+		Uint32 chunk_index = 0;
+		if (chunk_selector->select(pd,chunk_index))
 		{
-			Chunk* c = cman.getChunk(chunk);
-			if (downloading_chunks.contains(chunk))
-			{
-				return downloading_chunks.find(chunk)->assign(pd);
-			}
-			else
-			{
-				ChunkDownload* cd = new ChunkDownload(c);
-				downloading_chunks.insert(chunk,cd);
-				cd->assign(pd);
-				if (tmon)
-					tmon->downloadStarted(cd);
-				return true;
-			}
+			return assignPieceDownloaderToChunk(pd, chunk_index);
 		}
 		else if (pd->getNumGrabbed() == 0)
 		{ 
@@ -384,7 +389,21 @@ namespace bt
 				ws->download(first,last);
 		}
 	}
+		
+	const ChunkManager* Downloader::getChunkManager() const 
+	{
+		return &cman;
+	}
 	
+	ChunkSelectorInterface* Downloader::getChunkSelector()
+	{
+		return chunk_selector;
+	}
+	
+	QList< PieceDownloader * > Downloader::getPieceDownloaders() const
+	{
+		return piece_downloaders;
+	}
 
 	bool Downloader::isChunkDownloading(Uint32 chunk) const
 	{
@@ -953,20 +972,34 @@ namespace bt
 		}
 	}
 	
-	ChunkDownload* Downloader::download(Uint32 chunk)
+	ChunkDownload* Downloader::getChunkDownload(Uint32 chunk_index)
 	{
-		return downloading_chunks.find(chunk);
+		return downloading_chunks.find(chunk_index);
 	}
 	
-	const bt::ChunkDownload* Downloader::download(Uint32 chunk) const
+	const bt::ChunkDownload* Downloader::getChunkDownload(Uint32 chunk_index) const
 	{
-		return downloading_chunks.find(chunk);
+		return downloading_chunks.find(chunk_index);
 	}
 	
 	void Downloader::setUseWebSeeds(bool on) 
 	{
 		use_webseeds = on;
 	}
+	
+	void Downloader::stopAndReassignPieceDownloader(PieceDownloader *piece_downloader, Uint32 chunk_index)
+	{
+		// it also kick peer from all ChunkDownload assignments
+		removePieceDownloader(piece_downloader);
+		piece_downloader->cancelAll();
+
+		assignPieceDownloaderToChunk(piece_downloader, chunk_index);
+		
+		// this requires to monitor PieceDownloader and select new downloads for it if required
+		addPieceDownloader(piece_downloader);
+	}
+
+	
 }
 
 #include "downloader.moc"

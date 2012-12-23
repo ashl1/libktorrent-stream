@@ -141,6 +141,14 @@ namespace bt
 	
 	inline TimeStamp CurrentTime() {return global_time_stamp;}
 	
+	TimeStamp SecondsToMSeconds(Uint64 seconds);
+	
+	Uint64 MSecondsToSeconds(TimeStamp mseconds);	
+	
+	/**
+	 * 
+	 * @return The value in milliseconds
+	 */
 	KTORRENT_EXPORT TimeStamp Now();
 	
 	KTORRENT_EXPORT QString DirSeparator();

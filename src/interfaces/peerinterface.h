@@ -123,7 +123,7 @@ namespace bt
 		virtual bt::Uint32 averageDownloadSpeed() const = 0;
 		
 		/// Get the Peer's BitSet
-		const BitSet & getPiecesAvailability() const {return pieces;}
+		const BitSet & getChunksAvailability() const {return chunks_availability;}
 		
 		/// Get the Peer's ID
 		const PeerID & getPeerID() const {return peer_id;}
@@ -150,7 +150,7 @@ namespace bt
 		TimeStamp getUnchokeTime() const {return stats.time_unchoked;}
 		
 		/// See if the peer is a seeder.
-		bool isSeeder() const {return pieces.allOn();}
+		bool isSeeder() const {return chunks_availability.allOn();}
 		
 		/// Peer is allowed to download chunk (used for superseeding)
 		virtual void chunkAllowed(bt::Uint32 chunk) = 0;
@@ -164,7 +164,7 @@ namespace bt
 		bool paused;
 		bool killed;
 		PeerID peer_id;
-		BitSet pieces;
+		BitSet chunks_availability;
 	};
 
 }

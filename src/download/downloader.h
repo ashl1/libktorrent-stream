@@ -45,7 +45,7 @@ namespace bt
 	class WebSeedChunkDownload;
 
 	typedef PtrMap<Uint32,ChunkDownload>::iterator CurChunkItr;
-	typedef PtrMap<Uint32,ChunkDownload>::const_iterator CurChunkCItr;
+	typedef PtrMap<Uint32,ChunkDownload>::const_iterator CurChunkConstItr;
 	
 	#define CURRENT_CHUNK_MAGIC 0xABCDEF00
 	
@@ -131,24 +131,9 @@ namespace bt
 		 */
 		void pause();
 		
-		CurChunkCItr beginDownloads() const {return downloading_chunks.begin();}
-		CurChunkCItr endDownloads() const {return downloading_chunks.end();}
-		
-		
-		/**
-		 * Get a download for a chunk
-		 * @param chunk The chunk
-		 * @return The ChunkDownload, or 0 if no download is found
-		 */
-		ChunkDownload* download(Uint32 chunk);
-		
-		/**
-		 * Get a download for a chunk (const version)
-		 * @param chunk The chunk
-		 * @return The ChunkDownload, or 0 if no download is found
-		 */
-		const ChunkDownload* download(Uint32 chunk) const;
-
+		CurChunkConstItr beginDownloads() const {return downloading_chunks.begin();}
+		CurChunkConstItr endDownloads() const {return downloading_chunks.end();}
+				
 		/**
 		 * See if we are downloading a Chunk
 		 * @param chunk ID of Chunk
@@ -186,11 +171,31 @@ namespace bt
 		void loadDownloads(const QString & file);
 
 		/**
+		 * Get have been downloading ChunkDownload (or downloading now) for the specified chunk
+		 * @return Pointer to the ChunkDownload with specified chunk_index, or
+		 *  0 in case the chunk have never been downloaded or already downloaded
+		 */
+		ChunkDownload* getChunkDownload(Uint32 chunk_index);
+
+		/**
+		 * Get have been downloading ChunkDownload (or downloading now) for the specified chunk
+		 * @return Pointer to the ChunkDownload with specified chunk_index, or
+		 *  0 in case the chunk have never been downloaded or already downloaded
+		 */
+		const ChunkDownload* getChunkDownload(Uint32 chunk_index) const;
+		
+		const ChunkManager* getChunkManager() const;
+		
+		ChunkSelectorInterface* getChunkSelector();
+		
+		/**
 		 * Get the number of bytes already downloaded in the current_chunks file.
 		 * @param file The path of the current_chunks file
 		 * @return The bytes already downloading
 		 */
 		Uint32 getDownloadedBytesOfCurrentChunksFile(const QString & file);
+		
+		QList<PieceDownloader*> getPieceDownloaders() const;
 		
 		/**
 		 * A corrupted chunk has been detected, make sure we redownload it.
@@ -215,6 +220,8 @@ namespace bt
 		
 		/// Enable or disable the use of webseeds
 		static void setUseWebSeeds(bool on);
+		
+		void stopAndReassignPieceDownloader(PieceDownloader* piece_downloader, Uint32 chunk_index);
 	public slots:
 		/**
 		 * Update the downloader.
@@ -281,6 +288,8 @@ namespace bt
 		void chunkDownloaded(Uint32 chunk);
 		
 	private:
+		bool assignPieceDownloaderToChunk(PieceDownloader* piece_downloader, Uint32 chunk_index);
+		
 		bool downloadFrom(PieceDownloader* pd);
 		void downloadFrom(WebSeed* ws);
 		void normalUpdate();

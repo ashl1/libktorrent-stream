@@ -102,13 +102,21 @@ namespace bt
 		Chunk* getChunk() {return chunk;}
 	
 		/// Get the total number of pieces
-		Uint32 getTotalPieces() const {return num;}
+		Uint32 getTotalPieces() const {return total_pieces_number;}
 		
 		/// Get the number of pieces downloaded
-		Uint32 getPiecesDownloaded() const {return num_downloaded;}
+		Uint32 getPiecesDownloaded() const {return downloaded_pieces_number;}
 
 		/// Get the number of bytes downloaded.
-		Uint32 bytesDownloaded() const;
+		Uint64 bytesDownloaded() const;
+		
+		/**
+		 * Return the number of bytes left to download divisibled by piece length
+		 * @return The number of bytes left to download
+		 */
+		Uint64 bytesLeft() const;
+		
+		Uint64 getAverageDownloadSpeed() const;
 		
 		/// Get the index of the chunk
 		Uint32 getChunkIndex() const;
@@ -116,7 +124,7 @@ namespace bt
 		/// Get the PeerID of the current peer
 		QString getPieceDownloaderName() const;
 		
-		/// Get the download speed
+		/// Get the download speed in bytes|second
 		Uint32 getDownloadSpeed() const;
 
 		/// Get download stats
@@ -127,11 +135,11 @@ namespace bt
 		
 		/**
 		 * A Piece has arived.
-		 * @param p The Piece
-		 * @param ok Whether or not the piece was needed
+		 * @param p[in] The Piece
+		 * @param is_needed[out] Whether or not the piece was needed
 		 * @return true If Chunk is complete
 		 */
-		bool piece(const Piece & p,bool & ok);	
+		bool pieceReceived(const Piece& p,bool& is_needed);	
 		
 		/**
 		 * Assign the downloader to download from.
@@ -190,6 +198,9 @@ namespace bt
 		/// Send requests to peers
 		void update();
 		
+		/// Determine if the chunk is nearly finish downloading
+		bool nearlyDone() const;
+		
 		/// See if this CD hasn't been active in the last update
 		bool needsToBeUpdated() const {return timer.getElapsedSinceUpdate() > 60 * 1000;}
 		
@@ -215,8 +226,8 @@ namespace bt
 	private:		
 		BitSet pieces;
 		Chunk* chunk;
-		Uint32 num;
-		Uint32 num_downloaded;
+		Uint32 total_pieces_number;
+		Uint32 downloaded_pieces_number;
 		Uint32 last_size;
 		Timer timer;
 		QList<PieceDownloader*> pdown;

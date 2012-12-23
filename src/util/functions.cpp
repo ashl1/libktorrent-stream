@@ -64,6 +64,17 @@ namespace bt
 	
 	TimeStamp global_time_stamp = 0;
 	
+	Uint64 MSecondsToSeconds(TimeStamp mseconds)
+	{
+		return mseconds / 1000;
+	}
+
+	TimeStamp SecondsToMSeconds(Uint64 seconds)
+	{
+		return seconds * 1000;
+	}
+
+	
 	Uint64 Now()
 	{
 		struct timeval tv;

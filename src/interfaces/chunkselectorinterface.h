@@ -21,6 +21,7 @@
 #ifndef BTCHUNKSELECTORINTERFACE_H
 #define BTCHUNKSELECTORINTERFACE_H
 
+#include <QObject>
 #include <util/constants.h>
 #include <ktorrent_export.h>
 
@@ -37,8 +38,9 @@ namespace bt
 	* 
 	* Interface class for selecting chunks to download.
 	*/
-	class KTORRENT_EXPORT ChunkSelectorInterface
+	class KTORRENT_EXPORT ChunkSelectorInterface : public QObject
 	{
+		Q_OBJECT
 	public:
 		ChunkSelectorInterface();
 		virtual ~ChunkSelectorInterface();

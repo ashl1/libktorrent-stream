@@ -188,6 +188,14 @@ namespace bt
             return d->chunks[i];
     }
 
+    const Chunk* ChunkManager::getChunk(unsigned int i) const
+    {
+	if (i >= (Uint32)d->chunks.size())
+            return 0;
+        else
+            return d->chunks[i];
+    }
+    
     void ChunkManager::start()
     {
         d->cache->open();
