@@ -116,6 +116,17 @@ namespace bt
 	const Uint64 STREAMING_SPEED_RESERVE = 20 * 1024;
 	
 	const Uint32 MSECONDS_MANAGER_OF_STREAM_UPDATED = 2000;
+	
+	/**
+	 * The number of chunks the \ref ManagerOfStream_Terminology_BufferRequired will have
+	 */
+	const Uint32 MIN_CHUNKS_STREAMING_BUFFER_REQUIRED = 3;
+	
+	/**
+	 * The assumed minimum of downloading speed from Peer in bytes/second.
+	 * Use while determining the time chunk will been downloaded while the chunk is not dowloading and we don't know the speed
+	 */
+// 	const Uint64 ASSUMED_MINIMUM_PEER_DOWNLOAD_RATE = 1024;
 }
 
 

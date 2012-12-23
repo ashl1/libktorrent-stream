@@ -193,6 +193,8 @@ namespace bt
 		 */
 		void emitMetadataDownloaded(const QByteArray & data);
 		
+		const BitSet& getChunksAvailability() const;
+		
 		/// Send an extended protocol handshake
 		void sendExtProtHandshake(Uint16 port,Uint32 metadata_size,bool partial_seed);
 		
@@ -362,6 +364,8 @@ namespace bt
 		Uint64 bytes_downloaded_since_unchoke;
 		
 		static bool resolve_hostname;
+		
+		bool received_have_message;
 
 		friend class PeerDownloader;
 	};

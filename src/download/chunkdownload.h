@@ -116,6 +116,7 @@ namespace bt
 		 */
 		Uint64 bytesLeft() const;
 		
+		/// Get the average download speed in bytes/second
 		Uint64 getAverageDownloadSpeed() const;
 		
 		/// Get the index of the chunk
@@ -124,7 +125,7 @@ namespace bt
 		/// Get the PeerID of the current peer
 		QString getPieceDownloaderName() const;
 		
-		/// Get the download speed in bytes|second
+		/// Get the download speed in bytes/second
 		Uint32 getDownloadSpeed() const;
 
 		/// Get download stats
@@ -153,12 +154,6 @@ namespace bt
 		 * @param pd The downloader
 		 */
 		void release(PieceDownloader* pd);
-
-		/**
-		 * A PieceDownloader has been killed. We need to remove it.
-		 * @param pd The PieceDownloader
-		 */
-		void killed(PieceDownloader* pd);
 
 		/**
 		 * Save to a File

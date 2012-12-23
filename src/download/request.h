@@ -61,7 +61,7 @@ namespace bt
 		virtual ~Request();
 
 		/// Get the index of the chunk
-		Uint32 getIndex() const {return index;}
+		Uint32 getChunkIndex() const {return index;}
 
 		/// Get the offset into the chunk
 		Uint32 getOffset() const {return off;}

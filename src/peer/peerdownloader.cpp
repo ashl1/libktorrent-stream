@@ -173,10 +173,10 @@ namespace bt
 	{
 		if (peer)
 		{
-			Out(SYS_DIO|LOG_DEBUG) << "\tPeerDownloader::hasChunk: peer" << endl;
+// 			Out(SYS_DIO|LOG_DEBUG) << "\tPeerDownloader::hasChunk: peer " << (Uint64)peer << "\t" <<
+// 				peer->getChunksAvailability().get(idx) << " chunk " << idx << endl;
 			return peer->getChunksAvailability().get(idx);
 		} else {
-			Out(SYS_DIO|LOG_DEBUG) << "\tPeerDownloader::hasChunk: NOT peer" << endl;
 			return false;
 		}
 	}
@@ -197,7 +197,7 @@ namespace bt
 	
 	Uint32 PeerDownloader::getDownloadRate(Uint32 chunk_index) const
 	{
-		if (!reqs.isEmpty() && reqs.first().req.getIndex() == chunk_index)
+		if (!reqs.isEmpty() && reqs.first().req.getChunkIndex() == chunk_index)
 			return getDownloadRate();
 		return 0;
 	}
@@ -222,7 +222,7 @@ namespace bt
 		
 		foreach (TimeStampedRequest request, reqs)
 		{
-			index = request.req.getIndex();
+			index = request.req.getChunkIndex();
 			if (index < minimum_chunk_index)
 				minimum_chunk_index = index;
 		}
@@ -253,8 +253,8 @@ namespace bt
 		
 		foreach (TimeStampedRequest request, reqs)
 		{
-			index = request.req.getIndex();
-			if (index >= chunk_index_from && index <= chunk_index_to)
+			index = request.req.getChunkIndex();
+			if (chunk_index_from <= index && index <= chunk_index_to)
 				return true;
 		}
 		

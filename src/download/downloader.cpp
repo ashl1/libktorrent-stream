@@ -62,7 +62,8 @@ namespace bt
 		Uint64 total = tor.getTotalSize();
 		bytes_downloaded = (total - cman.bytesLeft());
 		curr_chunks_downloaded = 0;
-		unnecessary_data = 0;
+		total_unnecessary_data = 0;
+		unnecessary_data_chunk_finished = 0;
 	
 		downloading_chunks.setAutoDelete(true);
 		
@@ -141,12 +142,15 @@ namespace bt
 		if (cman.completed())
 			return;
 		
-		ChunkDownload* cd = downloading_chunks.find(p.getIndex());
+		ChunkDownload* cd = downloading_chunks.find(p.getChunkIndex());
 		if (!cd)
 		{
-			unnecessary_data += p.getLength();
+			total_unnecessary_data += p.getLength();
+			unnecessary_data_chunk_finished += p.getLength();
 			Out(SYS_DIO|LOG_DEBUG) << 
-					"Unnecessary piece (chunk already finished), total unnecessary data : " << BytesToString(unnecessary_data) << endl;
+					"Unnecessary piece (chunk " << p.getChunkIndex() <<
+					" already finished), (chunk finished/total) unnecessary data : " <<
+					BytesToString(unnecessary_data_chunk_finished) << "/" << BytesToString(total_unnecessary_data) << endl;
 			return;
 		}
 		
@@ -166,15 +170,15 @@ namespace bt
 					bytes_downloaded = 0;
 				else
 					bytes_downloaded -= cd->getChunk()->getSize();
-				downloading_chunks.erase(p.getIndex());
+				downloading_chunks.erase(p.getChunkIndex());
 			}
 			else
 			{
-				downloading_chunks.erase(p.getIndex());
+				downloading_chunks.erase(p.getChunkIndex());
 				foreach (WebSeed* ws,webseeds)
 				{
-					if (ws->inCurrentRange(p.getIndex()))
-						ws->chunkDownloaded(p.getIndex());
+					if (ws->inCurrentRange(p.getChunkIndex()))
+						ws->chunkDownloaded(p.getChunkIndex());
 				}
 			}
 		}
@@ -186,9 +190,9 @@ namespace bt
 			
 		if (!ok)
 		{
-			unnecessary_data += p.getLength();
+			total_unnecessary_data += p.getLength();
 			Out(SYS_DIO|LOG_DEBUG) << 
-					"Unnecessary piece, total unnecessary data : " << BytesToString(unnecessary_data) << endl; 
+					"Unnecessary piece, total unnecessary data : " << BytesToString(total_unnecessary_data) << endl; 
 		}
 	}
 	
@@ -312,10 +316,13 @@ namespace bt
 		Uint32 chunk_index = 0;
 		if (chunk_selector->select(pd,chunk_index))
 		{
-			return assignPieceDownloaderToChunk(pd, chunk_index);
+			bool b = assignPieceDownloaderToChunk(pd, chunk_index);
+			Out(SYS_DIO|LOG_DEBUG) << "\tDownloader::downloadFrom: Chunk " << chunk_index << " was selected. Assigned to PeerDownloader: " << b << endl;
+			return b;
 		}
 		else if (pd->getNumGrabbed() == 0)
 		{ 
+			Out(SYS_DIO|LOG_DEBUG) << "\tDownloader::downloadFrom: Cannot assign any chunk for the PieceDownloader " << endl;
 			// If the peer hasn't got a chunk we want, 
 			ChunkDownload *cdmin = selectWorst(pd); 
 			
@@ -324,7 +331,8 @@ namespace bt
 				return cdmin->assign(pd); 
 			}
 		} 
-		
+
+		Out(SYS_DIO|LOG_DEBUG) << "\tDownloader::downloadFrom: Cannot assign any chunk for the PieceDownloader " << endl;
 		return false;
 	}
 	
@@ -399,7 +407,7 @@ namespace bt
 		for (CurChunkItr i = downloading_chunks.begin();i != downloading_chunks.end();++i)
 		{
 			ChunkDownload* cd = i->second;
-			cd->killed(peer);
+			cd->release(peer);
 		}
 		piece_downloaders.removeAll(peer);
 	}
@@ -945,9 +953,9 @@ namespace bt
 	
 	void Downloader::stopAndReassignPieceDownloader(PieceDownloader *piece_downloader, Uint32 chunk_index)
 	{
-		// it also kick peer from all ChunkDownload assignments
+		// it also cancel all requests of the peer from all ChunkDownload assignments
 		removePieceDownloader(piece_downloader);
-		piece_downloader->cancelAll();
+// 		piece_downloader->cancelAll();
 
 		assignPieceDownloaderToChunk(piece_downloader, chunk_index);
 		

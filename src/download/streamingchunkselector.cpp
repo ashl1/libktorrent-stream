@@ -20,6 +20,7 @@
 
 #include "streamingchunkselector.h"
 
+#include <cassert>
 #include <diskio/chunkmanager.h>
 #include <interfaces/piecedownloader.h>
 #include <util/log.h>
@@ -60,11 +61,12 @@ namespace bt
 	
 	void StreamingChunkSelector::setCursor(Uint32 chunk)
 	{
+		assert(range_start <= chunk && chunk <= range_end);
 		if (cursor != chunk)
 		{
 			cursor = chunk;
 			updateRange();
-			emit anotherChunkAsked(chunk);
+			emit anotherChunkAsked(cursor);
 		}
 	}
 	
@@ -145,13 +147,14 @@ namespace bt
 			return false;
 	}
 
-	bool StreamingChunkSelector::select(bt::PieceDownloader* pd, bt::Uint32& chunk)
+	bool StreamingChunkSelector::select(bt::PieceDownloader* pd, bt::Uint32& chunk_index)
 	{
-		Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select - will from buffer required" << endl;
-		if (manager_of_stream->selectChunkFromBufferRequiredNotMeetRequirement(pd, chunk))
+		Out(SYS_DIO|LOG_DEBUG) << endl << "\tSELECTING\tSELECTING\tSELECTING\tSELECTING\tSELECTING\tSELECTING" << endl;
+// 		Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select - will from buffer required" << endl;
+		if (manager_of_stream->selectChunkFromBufferRequiredNotMeetRequirement(pd, chunk_index))
 			return true;
-		Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select - will from buffer preferred" << endl;
-		if (manager_of_stream->selectChunkFromBufferPreferred(pd, chunk))
+// 		Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select - will from buffer preferred" << endl;
+		if (manager_of_stream->selectChunkFromBufferPreferred(pd, chunk_index))
 			return true;
 		
 		Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select - will another algo" << endl;
@@ -163,17 +166,20 @@ namespace bt
 // 		- statistical info based on user seekings in the past grouped by content type (video, audio) (calculate once for torrent)
 		
 		const BitSet & bs = cman->getBitSet();
-		for (Uint32 chunk_index = range_end; chunk_index > cursor; --chunk_index)
+		for (chunk_index = range_end; chunk_index > cursor; --chunk_index)
 		{
-			/// TODO: Determne the reason, why pd->hasChunk return fale for all chunks
-			Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select\tchunk( " << chunk_index << " )" << endl <<
-				"\t\tdownloaded? " << bs.get(chunk_index) << endl <<
-				"\t\tPieceDownloader has chunk? " << pd->hasChunk(chunk_index) << endl;
-			if (!bs.get(chunk_index) && pd->hasChunk(chunk_index)) {
+			/// TODO: Determne the reason, why pd->hasChunk return fail for all chunks
+// 			Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select\tchunk( " << chunk_index << " )" << endl <<
+// 				"\t\tdownloaded? " << bs.get(chunk_index) << endl <<
+// 				"\t\tPieceDownloader has chunk? " << pd->hasChunk(chunk_index) << endl;
+			if (!bs.get(chunk_index) && !downer->isChunkDownloading(chunk_index) && pd->hasChunk(chunk_index)) {
 				Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select - finish 1" << endl;
 				return true;
 			}
 		}
+		
+		/// TODO: select from range also if before cursor
+		
 		Out(SYS_DIO|LOG_DEBUG) << "\tStreamingChunkSelector::select - finish 2" << endl;
 		return false;
 	}

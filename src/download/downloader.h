@@ -301,7 +301,8 @@ namespace bt
 		ChunkManager & cman;
 		Uint64 bytes_downloaded;
 		Uint64 curr_chunks_downloaded;
-		Uint64 unnecessary_data;
+		Uint64 total_unnecessary_data;
+		Uint64 unnecessary_data_chunk_finished;
 		/**
 		 * @brief The list of current downloading ChunkDownload's or selected to download
 		 * The list of current downloading ChunkDownload's or selected to download.
