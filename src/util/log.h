@@ -26,6 +26,8 @@
 #include <qstring.h>
 #include <ktorrent_export.h>
 
+#include "bitset.h"
+
 // LOG MESSAGES CONSTANTS
 #define LOG_NONE 0x00
 #define LOG_IMPORTANT 0x01
@@ -168,6 +170,8 @@ namespace bt
 		 * @return This Log
 		 */
 		Log & operator << (Int64 v);
+		
+		Log& operator << (const BitSet& bitset);
 		
 		/**
 		* Prints and endline character to the Log and flushes it.

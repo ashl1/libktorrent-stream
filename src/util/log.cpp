@@ -129,14 +129,15 @@ namespace bt
 		
 		void finishLine()
 		{
+			std::cout << QString::number(tmp.size()).toLocal8Bit().constData();
 			QString final = QDateTime::currentDateTime().toString() + ": " + tmp;
 			
 			// only add stuff when we are not rotating the logs
 			// this could result in the loss of some messages
 			if (!rotate_job && fptr != 0)
 			{
-				if (out)
-					*out << final << ::endl;
+// 				if (out)
+// 					*out << final << ::endl;
 				
 				fptr->flush();
 				if (to_cout)
@@ -252,6 +253,16 @@ namespace bt
 	Log & Log::operator << (Int64 v)
 	{
 		return operator << (QString::number(v));
+	}
+
+	Log& Log::operator<<(const BitSet& bitset)
+	{
+		*this << "Bitset:" << endl;
+		for (Uint32 i = 0; i < bitset.getNumBits(); ++i)
+		{
+			*this << "\t" << i << " = " << bitset.get(i) << endl;
+		}
+		return *this;
 	}
 
 	void Log::setFilter(unsigned int filter)
