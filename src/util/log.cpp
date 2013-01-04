@@ -129,15 +129,14 @@ namespace bt
 		
 		void finishLine()
 		{
-			std::cout << QString::number(tmp.size()).toLocal8Bit().constData();
 			QString final = QDateTime::currentDateTime().toString() + ": " + tmp;
 			
 			// only add stuff when we are not rotating the logs
 			// this could result in the loss of some messages
 			if (!rotate_job && fptr != 0)
 			{
-// 				if (out)
-// 					*out << final << ::endl;
+				if (out)
+					*out << final << ::endl;
 				
 				fptr->flush();
 				if (to_cout)
