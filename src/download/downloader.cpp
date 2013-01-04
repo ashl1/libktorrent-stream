@@ -19,6 +19,7 @@
  ***************************************************************************/
 #include "downloader.h"
 
+#include <limits>
 #include <QFile>
 #include <QTextStream>
 #include <KLocale>
@@ -369,6 +370,16 @@ namespace bt
 		return piece_downloaders;
 	}
 
+	Uint32 Downloader::getMinimalIndexDownloadingChunk(const PieceDownloader* piece_downloader) const
+	{
+		for (CurChunkConstItr chunk_download = downloading_chunks.begin(); chunk_download != downloading_chunks.end(); ++chunk_download)
+		{
+			if (chunk_download->second->containsPeer(piece_downloader))
+				return chunk_download->second->getChunkIndex();
+		}
+		return std::numeric_limits<Uint32>::max();
+	}
+	
 	bool Downloader::isChunkDownloading(Uint32 chunk) const
 	{
 		return downloading_chunks.find(chunk) != 0;

@@ -19,7 +19,6 @@
  ***************************************************************************/
 #include "peerdownloader.h"
 
-#include <limits>
 #include <math.h>
 #include <util/functions.h>
 #include <util/log.h>
@@ -215,21 +214,6 @@ namespace bt
 			timedout(reqs.takeFirst().req);
 	}
 
-	Uint32 PeerDownloader::getMinimumIndexDownloadingChunk() const
-	{
-		Uint32 minimum_chunk_index = std::numeric_limits<Uint32>::max();
-		Uint32 index = 0;
-		
-		foreach (TimeStampedRequest request, reqs)
-		{
-			index = request.req.getChunkIndex();
-			if (index < minimum_chunk_index)
-				minimum_chunk_index = index;
-		}
-		
-		return minimum_chunk_index;
-	}
-
 	Uint32 PeerDownloader::getMaxChunkDownloads() const
 	{
 		// get the download rate in KB/sec
@@ -247,20 +231,6 @@ namespace bt
 		}
 	}
 	
-	bool PeerDownloader::isDownloadingChunkFromRange(Uint32 chunk_index_from, Uint32 chunk_index_to) const
-	{
-		Uint32 index = 0;
-		
-		foreach (TimeStampedRequest request, reqs)
-		{
-			index = request.req.getChunkIndex();
-			if (chunk_index_from <= index && index <= chunk_index_to)
-				return true;
-		}
-		
-		return false;
-	}
-
 	void PeerDownloader::choked()
 	{
 		// when the peers supports the fast extensions, choke does not mean that all

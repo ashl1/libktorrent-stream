@@ -93,7 +93,14 @@ namespace bt {
 	private:
 		class Chunk;
 		
-		static bool cmpPeersInsideBufferRequired(const PieceDownloader* first, const PieceDownloader* second);
+		class CmpPeersInsideBufferRequired
+		{
+		public:
+			CmpPeersInsideBufferRequired(const Downloader* downloader):downloader(downloader){};
+			bool operator () (const PieceDownloader* first, const PieceDownloader* second) const;
+		private:
+			const Downloader* downloader;
+		};
 		static bool cmpPeersInsideBufferPreferred(const PieceDownloader* first, const PieceDownloader* second);
 		static bool cmpPeersOutsideBufferPreferred(const PieceDownloader* first, const PieceDownloader* second);
 		
@@ -102,7 +109,7 @@ namespace bt {
 		 * @param peers_sorted[in,out] The list of peers have been already sorted by index of chunk descending
 		 * @param chunk_index[in] The index of the chunk, the peers are downloading the chunks with index less or equal to will be deleted from peers_sorted
 		 */
-		static void deleteFromListPeersDownloadedMorePrioritizedChunks(QList<PieceDownloader*> &peers_sorted, Uint32 chunk_index);
+		void deletePeersDownloadedMorePrioritizedChunksFromList(QList<PieceDownloader*> &peers_sorted, Uint32 chunk_index);
 		
 		/**
 		 * Determine the chunk with minimum index from \ref ManagerOfStream_Terminology_BufferRequired

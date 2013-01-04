@@ -209,9 +209,12 @@ namespace bt {
 	
 	void ManagerOfStream::checkAndMakeBufferRequiredBeInTime()
 	{	
-		Out(SYS_DIO|LOG_DEBUG) << endl <<
-			"\t--------------------------------------------" << endl << 
-			"\tManagerOfStream::checkAndMakeBufferRequiredBeInTime" << endl <<
+		Out(SYS_DIO|LOG_DEBUG) << endl;
+		Out(SYS_DIO|LOG_DEBUG) <<
+			"\t--------------------------------------------" << endl;
+		Out(SYS_DIO|LOG_DEBUG) << 
+			"\tManagerOfStream::checkAndMakeBufferRequiredBeInTime" << endl;
+		Out(SYS_DIO|LOG_DEBUG) <<
 			"\t--------------------------------------------" << endl;
 		Uint32 chunk_index = 0;
 		
@@ -234,9 +237,9 @@ namespace bt {
 					if (tryReassignPeers(peers_inside_preferred_buffer, chunk_index))
 						continue;
 					
-					deleteFromListPeersDownloadedMorePrioritizedChunks(peers_inside_required_buffer, chunk_index);
+					deletePeersDownloadedMorePrioritizedChunksFromList(peers_inside_required_buffer, chunk_index);
 					
-					Out(SYS_DIO|LOG_DEBUG) << "\t\tReassign chunks from\tBufferRequired\t to chunk\t" << chunk_index << endl;
+					Out(SYS_DIO|LOG_DEBUG) << "\tReassign chunks from\tBufferRequired\t to chunk\t" << chunk_index << endl;
 					tryReassignPeers(peers_inside_required_buffer, chunk_index);
 					
 					if (peers_inside_required_buffer.size() == 0) {
@@ -248,9 +251,12 @@ namespace bt {
 			}			
 		}
 		Out(SYS_DIO|LOG_DEBUG) << 
-			"\t--------------------------------------------" << endl << 
-			"\tManagerOfStream::checkAndMakeBufferRequiredBeInTime" << endl <<
-			"\t++++++++++++++++++++++++++++++++++++++++++++" << endl << endl;
+			"\t--------------------------------------------" << endl;
+		Out(SYS_DIO|LOG_DEBUG) << 
+			"\tManagerOfStream::checkAndMakeBufferRequiredBeInTime" << endl;
+		Out(SYS_DIO|LOG_DEBUG) <<
+			"\t++++++++++++++++++++++++++++++++++++++++++++" << endl;
+		Out(SYS_DIO|LOG_DEBUG) << endl;
 
 	}
 	
@@ -269,10 +275,14 @@ namespace bt {
 			// seeking at another place
 		}
 		
-		Out(SYS_DIO|LOG_DEBUG) << "\tManagerOfStream::chunkAsked" << endl <<
-			"\t\tlast_time_new_chunk_was_asked = " << last_time_new_chunk_was_asked << endl <<
-			"\t\tnow = " << now << endl <<
-			"\t\ttime_last_chunk_played_for = " << time_last_chunk_played_for << endl << endl;
+		Out(SYS_DIO|LOG_DEBUG) << "\tManagerOfStream::chunkAsked" << endl;
+		Out(SYS_DIO|LOG_DEBUG) <<
+			"\t\tlast_time_new_chunk_was_asked = " << last_time_new_chunk_was_asked << endl;
+		Out(SYS_DIO|LOG_DEBUG) <<
+			"\t\tnow = " << now << endl;
+		Out(SYS_DIO|LOG_DEBUG) <<
+			"\t\ttime_last_chunk_played_for = " << time_last_chunk_played_for << endl;
+		Out(SYS_DIO|LOG_DEBUG) << endl;
 		
 		last_time_new_chunk_was_asked = now;
 		index_chunk_last_time_asked = chunk_index;
@@ -286,15 +296,15 @@ namespace bt {
 		checkAndMakeBufferRequiredBeInTime();
 	}
 	
-	bool ManagerOfStream::cmpPeersInsideBufferPreferred(const PieceDownloader* first, const PieceDownloader* second)
+	/* static */ bool ManagerOfStream::cmpPeersInsideBufferPreferred(const PieceDownloader* first, const PieceDownloader* second)
 	{
 		return first->getDownloadRate() > second->getDownloadRate();
 	}
 
-	bool ManagerOfStream::cmpPeersInsideBufferRequired(const PieceDownloader* first, const PieceDownloader* second)
+	bool ManagerOfStream::CmpPeersInsideBufferRequired::operator()(const PieceDownloader* first, const PieceDownloader* second) const
 	{
-		Uint32 minimum_index_first = first->getMinimumIndexDownloadingChunk();
-		Uint32 minimum_index_second = second->getMinimumIndexDownloadingChunk();
+		Uint32 minimum_index_first = downloader->getMinimalIndexDownloadingChunk(first);
+		Uint32 minimum_index_second = downloader->getMinimalIndexDownloadingChunk(second);
 		if (minimum_index_first > minimum_index_second)
 			return true;
 		if (minimum_index_first == minimum_index_second)
@@ -302,14 +312,14 @@ namespace bt {
 		return false;
 	}
 
-	bool ManagerOfStream::cmpPeersOutsideBufferPreferred(const PieceDownloader* first, const PieceDownloader* second)
+	/* static */ bool ManagerOfStream::cmpPeersOutsideBufferPreferred(const PieceDownloader* first, const PieceDownloader* second)
 	{
 		return first->getDownloadRate() > second->getDownloadRate();
 	}
 
-	/* statis */ void ManagerOfStream::deleteFromListPeersDownloadedMorePrioritizedChunks(QList<PieceDownloader*>& peers_sorted, Uint32 chunk_index)
+	void ManagerOfStream::deletePeersDownloadedMorePrioritizedChunksFromList(QList<PieceDownloader*>& peers_sorted, Uint32 chunk_index)
 	{
-		while (!peers_sorted.isEmpty() && peers_sorted.back()->getMinimumIndexDownloadingChunk() <= chunk_index)
+		while (!peers_sorted.isEmpty() && downloader->getMinimalIndexDownloadingChunk(peers_sorted.back()) <= chunk_index)
 		{
 			peers_sorted.pop_back();
 		}
@@ -457,7 +467,7 @@ namespace bt {
 			//  to not produce race condition on the Piece's. Wait for 1 second to download
 			required_addition_download_rate = chunk.bytesLeft() / 1;
 		} else {
-			required_addition_download_rate = chunk.bytesLeft() /  + STREAMING_SPEED_RESERVE;
+			required_addition_download_rate = chunk.bytesLeft() / time_until_chunk_required + STREAMING_SPEED_RESERVE;
 		}
 		
 		Uint64 actual_peer_download_rate = 0;
@@ -468,11 +478,11 @@ namespace bt {
 			{
 				downloader->stopAndReassignPieceDownloader((*peer), chunk.getIndex());
 				actual_peer_download_rate = qMin<Uint64>((*peer)->getDownloadRate(), (*peer)->getAverageDownloadRate());
+				peer = peers_sorted.erase(peer);
+
 				if (required_addition_download_rate < actual_peer_download_rate)
 					return true;
 				required_addition_download_rate -= actual_peer_download_rate;
-				peer = peers_sorted.erase(peer);
-				
 // 				Out(SYS_DIO|LOG_DEBUG) << "\tManagerOfStream::tryReassignPeers\t" << peers_sorted.size() << " peers left" << endl;
 			} else {
 				++peer;
@@ -514,7 +524,7 @@ namespace bt {
 		//  the chunks outside buffer_preffered and buffer_required
 		Out(SYS_DIO|LOG_DEBUG) << "\t updateSortedPeersList: " << peers_outside_preferred_buffer.size() << " peers outside BufferRequired" << endl;
 
-		
+		CmpPeersInsideBufferRequired cmpPeersInsideBufferRequired(downloader);
 		std::sort(peers_inside_preferred_buffer.begin(), peers_inside_preferred_buffer.end(), cmpPeersInsideBufferPreferred);
 		std::sort(peers_inside_required_buffer.begin(), peers_inside_required_buffer.end(), cmpPeersInsideBufferRequired);
 		std::sort(peers_outside_preferred_buffer.begin(), peers_outside_preferred_buffer.end(), cmpPeersOutsideBufferPreferred);

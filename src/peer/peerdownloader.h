@@ -153,8 +153,6 @@ namespace bt
 		virtual Uint32 getAverageDownloadRate() const;
 		virtual Uint32 getDownloadRate() const;
 		virtual Uint32 getDownloadRate(Uint32 chunk_index) const;
-		virtual Uint32 getMinimumIndexDownloadingChunk() const;
-		virtual bool isDownloadingChunkFromRange(Uint32 chunk_index_from, Uint32 chunk_index_to) const;
 		
 		/**
 		 * Called when a piece has arrived.

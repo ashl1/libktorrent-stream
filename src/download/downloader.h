@@ -195,6 +195,8 @@ namespace bt
 		 */
 		Uint32 getDownloadedBytesOfCurrentChunksFile(const QString & file);
 		
+		Uint32 getMinimalIndexDownloadingChunk(const PieceDownloader* piece_downloader) const;
+		
 		QList<PieceDownloader*> getPieceDownloaders() const;
 		
 		/**

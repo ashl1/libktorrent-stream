@@ -76,8 +76,6 @@ namespace bt
 		
 		virtual bt::Uint32 getAverageDownloadRate() const = 0;
 		
-		virtual Uint32 getMinimumIndexDownloadingChunk() const = 0;
-		
 		/**
 		 * Get the name of the PieceDownloader
 		 * This is something which can be shown in the GUI.
@@ -104,15 +102,6 @@ namespace bt
 		 * @return Whether or not the PieceDownloader is choked
 		 */
 		virtual bool isChoked() const {return false;}
-		
-		/**
-		 * Determine if now is downloading (await for answer) the Piece from Chunk in specified range.
-		 *  The Request for that piece must be sent but it may stay in the queue of awaiting for response Requests
-		 * @param chunk_index_from The index of chunk the range start from to found the request in
-		 * @param chunk_index_to The index of chunk the range finish to (included) to found the request in. Its possible to use the same value as in chunk_index_from
-		 * @return True, if any pieces from the specified chunk is awaiting for response (the Request is sent)
-		 */
-		virtual bool isDownloadingChunkFromRange(Uint32 chunk_index_from, Uint32 chunk_index_to) const = 0;
 		
 		/**
 		 * Whether or not we can add another request.

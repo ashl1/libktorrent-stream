@@ -182,7 +182,7 @@ namespace bt
 		PieceDownloader* getOnlyDownloader();
 		
 		/// See if a PieceDownloader is assigned to this chunk
-		bool containsPeer(PieceDownloader *pd) {return pdown.contains(pd);} 
+		bool containsPeer(const PieceDownloader *pd) const {return pdown.contains(const_cast<PieceDownloader*>(pd));} 
 		
 		/// See if the download is choked (i.e. all downloaders are choked)
 		bool isChoked() const;
