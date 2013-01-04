@@ -132,11 +132,6 @@ namespace bt {
 		Uint32 getSizeOfBufferRequired() const;
 
 		/**
-		 * In case the last time chunk was played for is less than current chunk have already played, return 0
-		 */
-		TimeStamp getTimeCurrentChunkFinishPlaying() const;
-		
-		/**
 		 * Move (copy and erase original) the PieceDownloader from the peers_list_move_from into peers_list_move_into which
 		 *  are assigned to download any of the chunks in the specified range
 		 */

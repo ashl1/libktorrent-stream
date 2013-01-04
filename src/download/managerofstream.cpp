@@ -93,7 +93,9 @@ namespace bt {
 		 *  the chunk will be required for playing. Return 0 if the chunk not required to play
 		 *  (already played or in case the chunk was skipped, for example, by seeking media) or
 		 *  is playing now. This function don't check the range of downloading (may return 
-		 *  wrong big value for the chunks greater than the downloading range)
+		 *  wrong big value for the chunks greater than the downloading range).
+		 *  Also returns 0 for the current played chunk and the next one. The next chunk should be
+		 *  always downloaded because we don't know when this chunk will be asked
 		 */
 		TimeStamp getTimeUntilRequired();
 		
@@ -181,7 +183,9 @@ namespace bt {
 // 		  ";    current chunk: " << manager_of_stream->getCurrentPlayedChunkIndex() << endl <<
 // 		  "\t\tcurrent chunk finish playing in: " << manager_of_stream->getTimeCurrentChunkFinishPlaying() << " milliseconds" << endl <<
 // 		  "\t\tchunk was played for " << manager_of_stream->time_last_chunk_played_for << " milliseconds" << endl << endl;
-		return manager_of_stream->getTimeCurrentChunkFinishPlaying() + chunksBeetweenPlayedAndCurrent * manager_of_stream->time_last_chunk_played_for;
+		// The next chunk should be always downloaded because we don't know when this chunk will be asked
+		
+		return (chunksBeetweenPlayedAndCurrent == 0? 0: chunksBeetweenPlayedAndCurrent - 1) * manager_of_stream->time_last_chunk_played_for;
 	}
 	
 	bool ManagerOfStream::Chunk::isDownloaded()
@@ -342,14 +346,6 @@ namespace bt {
 	Uint32 ManagerOfStream::getCurrentPlayedChunkIndex() const
 	{
 		return dynamic_cast<StreamingChunkSelector*>(downloader->getChunkSelector())->getIndexChunkAskedLast();
-	}
-
-	TimeStamp ManagerOfStream::getTimeCurrentChunkFinishPlaying() const
-	{
-		TimeStamp timePlayed = Now() - last_time_new_chunk_was_asked;
-		if (time_last_chunk_played_for > timePlayed)
-			return time_last_chunk_played_for - timePlayed;
-		return 0;
 	}
 
 	Uint32 ManagerOfStream::getSizeOfBufferPreferred() const
